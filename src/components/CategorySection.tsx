@@ -20,9 +20,9 @@ export const CategorySection: React.FC = () => {
   return (
     <section className="py-12 bg-white w-full">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Section Header */}
-        <div className="text-center md:text-left mb-8 flex flex-col md:flex-row md:items-end md:justify-between">
+        {/* <div className="text-center md:text-left mb-8 flex flex-col md:flex-row md:items-end md:justify-between">
           <div>
             <span className="text-secondary text-xs font-bold tracking-widest uppercase">Shop By Category</span>
             <h2 className="font-serif text-2xl sm:text-3xl font-bold text-primary mt-1">Curated Collections</h2>
@@ -33,7 +33,7 @@ export const CategorySection: React.FC = () => {
           >
             Shop All Collections
           </Link>
-        </div>
+        </div> */}
 
         {/* Categories Horizontal Scroll */}
         <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 pt-2 no-scrollbar scroll-smooth snap-x">
@@ -49,9 +49,9 @@ export const CategorySection: React.FC = () => {
               <Link href={`/collections?category=${cat.slug}`}>
                 <div className="relative aspect-square w-full rounded-2xl overflow-hidden shadow-sm border border-zinc-100 bg-accent/40 mb-3 transition-transform duration-300 group-hover:shadow-md">
                   {/* Category Image */}
-                  <img 
-                    src={cat.image} 
-                    alt={cat.name} 
+                  <img
+                    src={cat.image}
+                    alt={cat.name}
                     className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
                   />
                   {/* Subtle overlay gradient */}

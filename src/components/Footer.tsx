@@ -28,7 +28,7 @@ export const Footer: React.FC = () => {
   return (
     <footer className="bg-primary text-white pt-16 pb-8 border-t border-secondary/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
-        
+
         {/* Column 1: Brand Info */}
         <div className="space-y-4">
           <Link href="/" className="inline-block">

@@ -31,16 +31,16 @@ export const NewArrivals: React.FC = () => {
   return (
     <section className="py-16 bg-white w-full">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Section Header */}
         <div className="text-center mb-12">
           <span className="text-secondary text-xs font-bold tracking-widest uppercase">New Arrivals</span>
           <h2 className="font-serif text-3xl sm:text-4xl font-bold text-primary mt-1">Fresh Luxury Drops</h2>
-          <p className="text-zinc-500 text-xs sm:text-sm max-w-md mx-auto mt-2 normal-case">Be the first to explore our latest designs, hand-crafted with immaculate detail and precious metals.</p>
+          {/* <p className="text-zinc-500 text-xs sm:text-sm max-w-md mx-auto mt-2 normal-case">Be the first to explore our latest designs, hand-crafted with immaculate detail and precious metals.</p> */}
         </div>
 
         {/* Product Grid */}
-        <motion.div 
+        <motion.div
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
@@ -56,7 +56,7 @@ export const NewArrivals: React.FC = () => {
 
         {/* Call to action button */}
         <div className="text-center mt-12">
-          <Link 
+          <Link
             href="/new-arrivals"
             className="btn-premium btn-outline text-xs tracking-widest"
           >

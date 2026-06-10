@@ -45,7 +45,7 @@ const REELS = [
   }
 ];
 
-export const CreatorReels: React.FC = () => {
+export const InfluencerSpotlight: React.FC = () => {
   const [activeReelVideo, setActiveReelVideo] = useState<string | null>(null);
   const [muted, setMuted] = useState(true);
 
@@ -55,11 +55,11 @@ export const CreatorReels: React.FC = () => {
 
         {/* Section Header */}
         <div className="text-center mb-12">
-          <span className="text-secondary text-xs font-bold tracking-widest uppercase flex items-center justify-center gap-1">
-            <Instagram size={14} /> Elanora Muse
+          <span className="text-secondary text-xs font-bold tracking-widest  flex items-center justify-center gap-1">
+            <Instagram size={14} /> ElanoraGems
           </span>
-          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-primary mt-1">Creator Reels</h2>
-          <p className="text-zinc-500 text-xs sm:text-sm max-w-md mx-auto mt-2 normal-case">See how our beautiful community styles ElanoraGems for their everyday elegance.</p>
+          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-primary mt-1">Influencer Spotlight</h2>
+          {/* <p className="text-zinc-500 text-xs sm:text-sm max-w-md mx-auto mt-2 normal-case">See how our beautiful community styles ElanoraGems for their everyday elegance.</p> */}
         </div>
 
         {/* Reels Horizontal Slider */}
@@ -167,4 +167,5 @@ export const CreatorReels: React.FC = () => {
     </section>
   );
 };
-export default CreatorReels;
+
+export default InfluencerSpotlight;

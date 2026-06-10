@@ -23,12 +23,12 @@ export const Bestsellers: React.FC = () => {
   return (
     <section className="py-16 bg-accent/20 w-full">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Section Header */}
         <div className="text-center mb-8">
           <span className="text-secondary text-xs font-bold tracking-widest uppercase">Our Bestsellers</span>
           <h2 className="font-serif text-3xl sm:text-4xl font-bold text-primary mt-1">Timeless Favourites</h2>
-          <p className="text-zinc-500 text-xs sm:text-sm max-w-md mx-auto mt-2 normal-case">Explore our highly-coveted designs, verified and adored by our style-conscious community.</p>
+          {/* <p className="text-zinc-500 text-xs sm:text-sm max-w-md mx-auto mt-2 normal-case">Explore our highly-coveted designs, verified and adored by our style-conscious community.</p> */}
         </div>
 
         {/* Tab Buttons Row */}
@@ -39,9 +39,8 @@ export const Bestsellers: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative flex-1 pb-4 text-xs font-bold uppercase tracking-wider text-center transition-colors cursor-pointer ${
-                  isActive ? "text-primary" : "text-zinc-400 hover:text-zinc-600"
-                }`}
+                className={`relative flex-1 pb-4 text-xs font-bold uppercase tracking-wider text-center transition-colors cursor-pointer ${isActive ? "text-primary" : "text-zinc-400 hover:text-zinc-600"
+                  }`}
               >
                 {tab.name}
                 {isActive && (
@@ -82,7 +81,7 @@ export const Bestsellers: React.FC = () => {
 
         {/* Explore CTA */}
         <div className="text-center mt-12">
-          <Link 
+          <Link
             href="/bestsellers"
             className="btn-premium btn-primary text-xs tracking-widest"
           >

@@ -6,10 +6,9 @@ import { HeroBanner } from "@/components/HeroBanner";
 import { CategorySection } from "@/components/CategorySection";
 import { NewArrivals } from "@/components/NewArrivals";
 import { Bestsellers } from "@/components/Bestsellers";
-import { CreatorReels } from "@/components/CreatorReels";
+import { InfluencerSpotlight } from "@/components/InfluencerSpotlight";
 import { OccasionSection } from "@/components/OccasionSection";
 import { GiftSection } from "@/components/GiftSection";
-import { ColorSection } from "@/components/ColorSection";
 import { Footer } from "@/components/Footer";
 import { CartDrawer } from "@/components/CartDrawer";
 
@@ -59,16 +58,13 @@ export default function Home() {
           <Bestsellers />
 
           {/* Instagram-Style Horizontal Reel Slider Section */}
-          <CreatorReels />
+          <InfluencerSpotlight />
 
           {/* Lifestyle Occasion Grid Section */}
           <OccasionSection />
 
           {/* Budget-based pastel Box section */}
           <GiftSection />
-
-          {/* Color/Metallic collections showcase Section */}
-          <ColorSection />
         </main>
 
         {/* Global Footer & Sliding Cart Drawer */}

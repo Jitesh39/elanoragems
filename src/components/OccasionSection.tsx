@@ -1,111 +1,288 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowUpRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
+// 6 occasion categories with premium imagery on dark green backdrops
 const OCCASIONS = [
-  { 
-    title: "Party Wear", 
-    slug: "party", 
-    image: "https://images.unsplash.com/photo-1549068106-b024baf5068d?w=600&q=80",
-    subtitle: "Turn heads at any night out"
+  {
+    title: "Festive Wear",
+    slug: "festive",
+    image: "/occasion_festive.png"
   },
-  { 
-    title: "Festive Wear", 
-    slug: "festive", 
-    image: "https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=600&q=80",
-    subtitle: "Celebrate traditions in style"
+  {
+    title: "Birthday Gifts",
+    slug: "birthday",
+    image: "/occasion_birthday.png"
   },
-  { 
-    title: "Everyday Wear", 
-    slug: "everyday", 
-    image: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=600&q=80",
-    subtitle: "Add elegance to your daily routine"
+  {
+    title: "Wedding Collection",
+    slug: "wedding",
+    image: "/occasion_wedding.png"
   },
-  { 
-    title: "Office Wear", 
-    slug: "office", 
-    image: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=600&q=80",
-    subtitle: "Subtle statements for work"
+  {
+    title: "Casual Wear",
+    slug: "everyday", // maps to 'everyday' in mockData.ts to display products
+    image: "/occasion_casual.png"
   },
-  { 
-    title: "Wedding Collection", 
-    slug: "wedding", 
-    image: "https://images.unsplash.com/photo-1603561591411-07134e71a2a9?w=600&q=80",
-    subtitle: "Sacred ornaments for your special day"
+  {
+    title: "Party Wear",
+    slug: "party",
+    image: "/occasion_party.png"
   },
-  { 
-    title: "Gift Collection", 
-    slug: "gift", 
-    image: "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=600&q=80",
-    subtitle: "Timeless tokens of love"
+  {
+    title: "Gift Collection",
+    slug: "gift",
+    image: "/occasion_gift.png"
   }
 ];
 
 export const OccasionSection: React.FC = () => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [visibleCards, setVisibleCards] = useState(4);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchEndX, setTouchEndX] = useState<number | null>(null);
+
+  // Monitor screen size to adjust the number of visible cards in the carousel (desktop vs tablet)
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setVisibleCards(4);
+      } else {
+        setVisibleCards(3);
+      }
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const maxIndex = OCCASIONS.length - visibleCards;
+  const safeCurrentIndex = Math.min(currentIndex, maxIndex);
+
+  const handlePrev = () => {
+    setCurrentIndex((prev) => Math.max(prev - 1, 0));
+  };
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => Math.min(prev + 1, maxIndex));
+  };
+
+  // Swipe gesture handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartX || !touchEndX) return;
+    const diff = touchStartX - touchEndX;
+    const swipeThreshold = 50;
+
+    if (diff > swipeThreshold) {
+      // Swipe left -> Next slide
+      setCurrentIndex((prev) => Math.min(prev + 1, maxIndex));
+    } else if (diff < -swipeThreshold) {
+      // Swipe right -> Prev slide
+      setCurrentIndex((prev) => Math.max(prev - 1, 0));
+    }
+
+    setTouchStartX(null);
+    setTouchEndX(null);
+  };
+
   return (
-    <section className="py-16 bg-accent/30 w-full">
+    <section 
+      className="py-16 sm:py-20 lg:py-24 w-full overflow-hidden"
+      style={{
+        background: "linear-gradient(180deg, #F4F2EC 0%, #D8F0EC 50%, #38C6C6 100%)"
+      }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="text-center mb-12">
-          <span className="text-secondary text-xs font-bold tracking-widest uppercase">Shop By Occasion</span>
-          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-primary mt-1">Designed For Every Moment</h2>
-          <p className="text-zinc-500 text-xs sm:text-sm max-w-md mx-auto mt-2 normal-case">Find the perfect balance of premium craftsmanship tailored for life&apos;s celebrated milestones.</p>
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-12 lg:mb-16"
+        >
+          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-light text-zinc-900 tracking-[0.15em] uppercase">
+            Shop By Occasion
+          </h2>
+          <p className="font-serif italic text-zinc-600 text-sm sm:text-base mt-3 tracking-wide">
+            Curated styles for every occasion
+          </p>
+        </motion.div>
+
+        {/* 1. DESKTOP & TABLET LAYOUT (>= 768px) */}
+        <div className="hidden md:flex flex-row items-end justify-between gap-6 lg:gap-8 relative min-h-[480px]">
+          
+          {/* Left Panel: Models Image (aligned to bottom, overlapping content card) */}
+          <motion.div 
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="w-[32%] lg:w-[30%] flex justify-start z-10 select-none pointer-events-none"
+          >
+            <img 
+              src="/occasion_models.png" 
+              alt="Models wearing luxury jewellery" 
+              className="h-[430px] lg:h-[490px] object-contain transform translate-y-8 lg:translate-y-12 -mr-8 lg:-mr-12"
+            />
+          </motion.div>
+
+          {/* Right Panel: White Content Card containing Slider and button */}
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="w-[68%] lg:w-[70%] bg-white rounded-[24px] shadow-xl p-8 lg:p-10 relative flex flex-col justify-between"
+          >
+            
+            {/* Carousel Container */}
+            <div className="relative w-full overflow-hidden px-1">
+              
+              {/* Carousel Track */}
+              <div 
+                className="flex transition-transform duration-500 ease-out -mx-2 lg:-mx-3"
+                style={{ 
+                  transform: `translateX(-${safeCurrentIndex * (100 / visibleCards)}%)` 
+                }}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
+                {OCCASIONS.map((occ) => (
+                  <div 
+                    key={occ.slug} 
+                    className="flex-shrink-0 px-2 lg:px-3"
+                    style={{ width: `${100 / visibleCards}%` }}
+                  >
+                    <Link 
+                      href={`/collections?occasion=${occ.slug}`} 
+                      className="group block text-center cursor-pointer"
+                    >
+                      <div className="relative overflow-hidden rounded-[20px] aspect-[1/1.1] bg-zinc-100 shadow-sm transition-all duration-500 ease-out group-hover:shadow-md group-hover:-translate-y-1">
+                        <img 
+                          src={occ.image} 
+                          alt={occ.title} 
+                          className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105" 
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300" />
+                      </div>
+                      <h3 className="font-serif text-[15px] lg:text-[16px] font-medium text-zinc-800 mt-4 tracking-wide group-hover:text-teal-700 transition-colors">
+                        {occ.title}
+                      </h3>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+
+              {/* Slider Navigation Arrows */}
+              {safeCurrentIndex > 0 && (
+                <button 
+                  onClick={handlePrev} 
+                  aria-label="Previous occasion"
+                  className="absolute left-1 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center border border-zinc-100 text-zinc-700 hover:bg-zinc-50 hover:text-teal-600 transition-all duration-300 cursor-pointer"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+              )}
+              {safeCurrentIndex < maxIndex && (
+                <button 
+                  onClick={handleNext} 
+                  aria-label="Next occasion"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center border border-zinc-100 text-zinc-700 hover:bg-zinc-50 hover:text-teal-600 transition-all duration-300 cursor-pointer"
+                >
+                  <ChevronRight size={20} />
+                </button>
+              )}
+            </div>
+
+            {/* Centered Shop Now Button inside desktop card */}
+            <div className="flex justify-center mt-10">
+              <Link 
+                href="/collections"
+                className="bg-[#2cb0b0] hover:bg-[#229292] text-white font-medium px-10 py-3.5 rounded-xl transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 text-center cursor-pointer"
+              >
+                Shop Now
+              </Link>
+            </div>
+            
+          </motion.div>
         </div>
 
-        {/* Occasion Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          {OCCASIONS.map((occ, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: idx * 0.05, duration: 0.4 }}
-              className="relative rounded-2xl overflow-hidden aspect-[4/5] sm:aspect-[3/4] bg-white group shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer"
+        {/* 2. MOBILE LAYOUT (< 768px) */}
+        <div className="block md:hidden">
+          
+          {/* Stacked Model Image */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="w-full flex justify-center mb-6"
+          >
+            <img 
+              src="/occasion_models.png" 
+              alt="Models wearing luxury jewellery" 
+              className="h-[300px] xs:h-[350px] object-contain select-none pointer-events-none" 
+            />
+          </motion.div>
+
+          {/* Stacked Shop Now Button below models */}
+          <div className="flex justify-center mb-10">
+            <Link 
+              href="/collections"
+              className="bg-[#2cb0b0] hover:bg-[#229292] text-white font-medium px-10 py-3.5 rounded-xl transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 text-center w-full sm:w-auto cursor-pointer"
             >
-              <Link href={`/collections?occasion=${occ.slug}`} className="block h-full w-full relative">
-                {/* Image with hover zoom */}
-                <img 
-                  src={occ.image} 
-                  alt={occ.title} 
-                  className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                />
+              Shop Now
+            </Link>
+          </div>
 
-                {/* Dark subtle overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent group-hover:via-black/40 transition-colors duration-300" />
-
-                {/* Content Panel (Bottom Aligned) */}
-                <div className="absolute inset-x-0 bottom-0 p-6 flex flex-col justify-end text-white z-20">
-                  <span className="text-secondary text-[10px] font-bold uppercase tracking-wider mb-1">
-                    {occ.subtitle}
-                  </span>
-                  <h3 className="font-serif text-xl sm:text-2xl font-bold tracking-wide">
+          {/* Occasion Cards: Responsive 2-column Grid displaying all 6 categories */}
+          <div className="grid grid-cols-2 gap-4 xs:gap-6 px-1">
+            {OCCASIONS.map((occ, idx) => (
+              <motion.div
+                key={occ.slug}
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.05, duration: 0.4 }}
+              >
+                <Link 
+                  href={`/collections?occasion=${occ.slug}`} 
+                  className="group block text-center cursor-pointer"
+                >
+                  <div className="relative overflow-hidden rounded-[20px] aspect-[1/1.1] bg-zinc-100 shadow-sm transition-all duration-500 ease-out group-hover:shadow-md group-hover:-translate-y-1">
+                    <img 
+                      src={occ.image} 
+                      alt={occ.title} 
+                      className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105" 
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300" />
+                  </div>
+                  <h3 className="font-serif text-[15px] font-medium text-zinc-800 mt-3 tracking-wide group-hover:text-teal-700 transition-colors">
                     {occ.title}
                   </h3>
-                  
-                  {/* Shop Now CTA */}
-                  <div className="mt-4 flex items-center justify-between opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
-                    <span 
-                      className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-white hover:text-secondary group/btn transition-colors"
-                    >
-                      Shop Collection 
-                      <ArrowUpRight size={14} className="transform group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
-                    </span>
-                  </div>
-                </div>
-
-                {/* Border glow effect on card hover */}
-                <div className="absolute inset-0 border border-transparent group-hover:border-secondary/30 rounded-2xl pointer-events-none transition-colors duration-500 z-30" />
-              </Link>
-            </motion.div>
-          ))}
+                </Link>
+              </motion.div>
+            ))}
+          </div>
         </div>
+
       </div>
     </section>
   );
 };
+
 export default OccasionSection;
