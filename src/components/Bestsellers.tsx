@@ -1,0 +1,97 @@
+"use client";
+
+import React, { useState } from "react";
+import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
+import { ProductCard } from "./ProductCard";
+import { MOCK_PRODUCTS } from "@/lib/mockData";
+
+const TABS = [
+  { id: "women", name: "Women Collection" },
+  { id: "men", name: "Men Collection" },
+  { id: "kids", name: "Kids Collection" }
+];
+
+export const Bestsellers: React.FC = () => {
+  const [activeTab, setActiveTab] = useState("women");
+
+  // Filter products by gender matching active tab
+  const filteredProducts = MOCK_PRODUCTS.filter(
+    (product) => product.gender === activeTab
+  );
+
+  return (
+    <section className="py-16 bg-accent/20 w-full">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        {/* Section Header */}
+        <div className="text-center mb-8">
+          <span className="text-secondary text-xs font-bold tracking-widest uppercase">Our Bestsellers</span>
+          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-primary mt-1">Timeless Favourites</h2>
+          <p className="text-zinc-500 text-xs sm:text-sm max-w-md mx-auto mt-2 normal-case">Explore our highly-coveted designs, verified and adored by our style-conscious community.</p>
+        </div>
+
+        {/* Tab Buttons Row */}
+        <div className="flex justify-center border-b border-zinc-200 mb-12 max-w-md mx-auto relative">
+          {TABS.map((tab) => {
+            const isActive = tab.id === activeTab;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`relative flex-1 pb-4 text-xs font-bold uppercase tracking-wider text-center transition-colors cursor-pointer ${
+                  isActive ? "text-primary" : "text-zinc-400 hover:text-zinc-600"
+                }`}
+              >
+                {tab.name}
+                {isActive && (
+                  <motion.div
+                    layoutId="activeTabUnderline"
+                    className="absolute bottom-0 left-0 right-0 h-[2px] bg-secondary z-10"
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Products Display (with transition on activeTab change) */}
+        <div className="min-h-[350px]">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.3 }}
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8"
+            >
+              {filteredProducts.length > 0 ? (
+                filteredProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))
+              ) : (
+                <div className="col-span-full py-12 text-center text-zinc-400 text-xs font-semibold uppercase tracking-wider">
+                  No bestseller products in this collection currently
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* Explore CTA */}
+        <div className="text-center mt-12">
+          <Link 
+            href="/bestsellers"
+            className="btn-premium btn-primary text-xs tracking-widest"
+          >
+            Shop Bestseller Collection
+          </Link>
+        </div>
+
+      </div>
+    </section>
+  );
+};
+export default Bestsellers;

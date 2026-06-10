@@ -1,26 +1,165 @@
 @import "tailwindcss";
 
+@theme {
+  --color-primary: #0F2F6B;
+  --color-primary-hover: #0a204a;
+  --color-secondary: #D4AF37;
+  --color-secondary-hover: #bda030;
+  --color-accent: #F8F4F0;
+  --color-dark: #1E1E1E;
+  --color-muted: #71717a;
+
+  --font-serif: var(--font-playfair), Georgia, serif;
+  --font-sans: var(--font-outfit), Inter, sans-serif;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #FFFFFF;
+  --foreground: #1E1E1E;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Base custom styles */
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-outfit), Inter, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F8F4F0;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D4AF37;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #0F2F6B;
+}
+
+/* Luxury effects */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+}
+
+.gold-gradient {
+  background: linear-gradient(135deg, #D4AF37 0%, #F3E5AB 50%, #AA7C11 100%);
+}
+
+.gold-text-gradient {
+  background: linear-gradient(135deg, #D4AF37 0%, #AA7C11 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.primary-gradient {
+  background: linear-gradient(135deg, #0F2F6B 0%, #1e4bb0 100%);
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Interactive elements */
+.input-premium {
+  border: 1px solid #e4e4e7;
+  padding: 0.75rem 1rem;
+  border-radius: 0.375rem;
+  outline: none;
+  transition: all 0.2s ease-in-out;
+  background-color: #ffffff;
+  color: #1e1e1e;
+}
+
+.input-premium:focus {
+  border-color: #D4AF37;
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.15);
+}
+
+.btn-premium {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.75rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background-color: #0F2F6B;
+  color: #FFFFFF;
+}
+
+.btn-primary:hover {
+  background-color: #0a204a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(15, 47, 107, 0.15);
+}
+
+.btn-secondary {
+  background-color: #D4AF37;
+  color: #FFFFFF;
+}
+
+.btn-secondary:hover {
+  background-color: #bda030;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.15);
+}
+
+.btn-outline {
+  border: 1px solid #0F2F6B;
+  color: #0F2F6B;
+  background-color: transparent;
+}
+
+.btn-outline:hover {
+  background-color: #0F2F6B;
+  color: #FFFFFF;
+}
+
+/* React Swiper customizations */
+.swiper-pagination-bullet-active {
+  background: #D4AF37 !important;
+  width: 24px !important;
+  border-radius: 4px !important;
+  transition: all 0.3s ease;
+}
+
+.swiper-button-next,
+.swiper-button-prev {
+  color: #D4AF37 !important;
+}
+
+/* Global Interactive Cursor Fixes */
+button,
+a,
+[role="button"],
+input[type="submit"],
+input[type="button"],
+.cursor-pointer,
+[onclick] {
+  cursor: pointer !important;
 }
