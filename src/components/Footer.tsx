@@ -93,15 +93,15 @@ export const Footer: React.FC = () => {
           <h4 className="font-serif text-secondary text-sm font-bold tracking-widest uppercase mb-4">Contact Us</h4>
           <div className="flex gap-2 text-xs text-zinc-300">
             <MapPin size={16} className="text-secondary flex-shrink-0" />
-            <span>Elanora Tower, Bandra West, Mumbai, Maharashtra 400050</span>
+            <span></span>
           </div>
           <div className="flex gap-2 text-xs text-zinc-300">
             <Phone size={16} className="text-secondary flex-shrink-0" />
-            <span>+91 98765 43210</span>
+            <span>+91 </span>
           </div>
           <div className="flex gap-2 text-xs text-zinc-300">
             <Mail size={16} className="text-secondary flex-shrink-0" />
-            <span>care@elanoragems.com</span>
+            <span>gemselanora@gmail.com</span>
           </div>
         </div>
 
@@ -114,7 +114,7 @@ export const Footer: React.FC = () => {
           <span>100% Safe & Secure Checkout. Trusted by over 10,000+ customers.</span>
         </div>
         <div>
-          &copy; {new Date().getFullYear()} ElanoraGems Private Limited. All rights reserved.
+          &copy; {new Date().getFullYear()} ElanoraGems . All rights reserved.
         </div>
       </div>
     </footer>
