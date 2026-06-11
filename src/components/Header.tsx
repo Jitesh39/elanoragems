@@ -48,16 +48,30 @@ export const Header: React.FC = () => {
   const accountRef = useRef<HTMLDivElement>(null);
 
   // Mobile drawer state
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [mobileActiveAccordion, setMobileActiveAccordion] = useState<string | null>(null);
-
   // Announcement bar slide state
-  const announcements = [
-    "✨ Free Shipping on Orders Above ₹999",
-    "🎁 Flat 10% Off! Use Coupon Code: ELANORA10",
-    "💎 Luxury Velvet Gift Box Free with Every Order"
-  ];
+  const announcements = ["✨ Free Shipping on Orders Above ₹999", "🎁 Flat 10% Off! Use Coupon Code: ELANORA10", "💎 Luxury Velvet Gift Box Free with Every Order"];
   const [currentAnnouncementIndex, setCurrentAnnouncementIndex] = useState(0);
+  const [showAnnouncement, setShowAnnouncement] = useState(true);
+
+  // Hide announcement on scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 10) {
+        setShowAnnouncement(false);
+      } else {
+        setShowAnnouncement(true);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -119,23 +133,18 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="w-full z-40 sticky top-0 bg-white shadow-sm transition-all duration-300">
-        {/* Announcement Bar */}
-        <div className="bg-primary text-white text-xs py-2 overflow-hidden relative h-8 flex items-center justify-center font-medium tracking-wider">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentAnnouncementIndex}
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -20, opacity: 0 }}
-              transition={{ duration: 0.5 }}
-              className="absolute text-center select-none"
-            >
-              {announcements[currentAnnouncementIndex]}
-            </motion.div>
-          </AnimatePresence>
-        </div>
+      {/* Announcement Bar */}
+      <motion.div
+        className="bg-primary text-white text-xs py-2 overflow-hidden flex items-center justify-center font-medium tracking-wider z-50"
+        initial={{ y: -100, opacity: 0 }}
+        animate={showAnnouncement ? { y: 0, opacity: 1 } : { y: -100, opacity: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        {announcements[currentAnnouncementIndex]}
+      </motion.div>
 
+      {/* Header */}
+      <header className="w-full z-40 sticky top-0 bg-white shadow-sm transition-all duration-300">
         {/* Main Header Area */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-4">
 

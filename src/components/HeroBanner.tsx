@@ -1,42 +1,42 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, EffectFade, Pagination } from "swiper/modules";
+import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 // Import Swiper styles
 import "swiper/css";
 import "swiper/css/effect-fade";
 import "swiper/css/pagination";
 
-const BANNERS = [
-  {
-    image: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=1600&q=80",
-    heading: "Crafted For Your Sacred Moments",
-    subheading: "Explore premium sterling silver & gold-plated jewellery collections designed to radiate luxury.",
-    cta: "Shop Now",
-    link: "/collections"
-  },
-  {
-    image: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=1600&q=80",
-    heading: "Royal Heritage & Bridal Glow",
-    subheading: "Handcrafted masterworks tailored for special celebrations and weddings.",
-    cta: "Discover Bridal",
-    link: "/collections?occasion=wedding"
-  },
-  {
-    image: "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=1600&q=80",
-    heading: "Elegance in Modern Minimalism",
-    subheading: "Chic, everyday wear ornaments styled for your contemporary wardrobe.",
-    cta: "Explore Daily Wear",
-    link: "/collections?category=necklaces"
-  }
-];
-
 export const HeroBanner: React.FC = () => {
   const router = useRouter();
+  const [slides, setSlides] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, "heroSlides"),
+      where("isActive", "==", true)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data: any[] = [];
+      snapshot.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
+
+      // Sort in memory to avoid Firestore composite index requirement
+      data.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+
+      setSlides(data);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Motion variants for content staggered entry
   const containerVariants = {
@@ -59,6 +59,14 @@ export const HeroBanner: React.FC = () => {
     }
   };
 
+  if (isLoading) {
+    return <section className="relative w-full h-[65vh] sm:h-[80vh] md:h-[85vh] bg-zinc-100 animate-pulse" />;
+  }
+
+  if (slides.length === 0) {
+    return null;
+  }
+
   return (
     <section className="relative w-full h-[65vh] sm:h-[80vh] md:h-[85vh] bg-accent/30 overflow-hidden">
       <Swiper
@@ -66,18 +74,30 @@ export const HeroBanner: React.FC = () => {
         effect="fade"
         autoplay={{ delay: 6000, disableOnInteraction: false }}
         pagination={{ clickable: true, el: ".custom-swiper-pagination" }}
-        loop={true}
+        loop={slides.length > 1}
         className="w-full h-full"
       >
-        {BANNERS.map((banner, index) => (
-          <SwiperSlide key={index} className="w-full h-full relative">
-            {/* Background Image overlay */}
+        {slides.map((banner, index) => (
+          <SwiperSlide key={banner.id || index} className="w-full h-full relative">
+            {/* Background Image/Video overlay */}
             <div className="absolute inset-0 bg-black/35 z-10" />
-            <img 
-              src={banner.image} 
-              alt={banner.heading} 
-              className="absolute inset-0 w-full h-full object-cover select-none"
-            />
+
+            {banner.mediaType === 'video' ? (
+              <video
+                src={banner.mediaUrl}
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="absolute inset-0 w-full h-full object-cover select-none"
+              />
+            ) : (
+              <img
+                src={banner.mediaUrl}
+                alt={banner.title}
+                className="absolute inset-0 w-full h-full object-cover select-none"
+              />
+            )}
 
             {/* Slider Content Wrapper */}
             <div className="absolute inset-0 z-20 flex items-center">
@@ -89,34 +109,34 @@ export const HeroBanner: React.FC = () => {
                   viewport={{ once: false }}
                   className="max-w-xl text-white space-y-4"
                 >
-                  <motion.span 
-                    variants={itemVariants} 
+                  <motion.span
+                    variants={itemVariants}
                     className="text-secondary text-xs sm:text-sm font-bold uppercase tracking-widest flex items-center gap-2"
                   >
                     <span className="w-8 h-[2px] bg-secondary inline-block"></span>
                     Exquisite Artistry
                   </motion.span>
 
-                  <motion.h1 
+                  <motion.h1
                     variants={itemVariants}
                     className="font-serif text-3xl sm:text-5xl md:text-6xl font-bold leading-tight tracking-wide"
                   >
-                    {banner.heading}
+                    {banner.title}
                   </motion.h1>
 
-                  <motion.p 
+                  <motion.p
                     variants={itemVariants}
                     className="text-zinc-200 text-sm sm:text-base md:text-lg max-w-lg leading-relaxed normal-case"
                   >
-                    {banner.subheading}
+                    {banner.subtitle}
                   </motion.p>
 
                   <motion.div variants={itemVariants} className="pt-2">
-                    <button 
-                      onClick={() => router.push(banner.link)}
+                    <button
+                      onClick={() => router.push(banner.buttonUrl || "/collections")}
                       className="px-8 py-3.5 bg-secondary text-white hover:bg-secondary-hover text-xs font-bold uppercase tracking-wider rounded-md transition-all duration-300 transform hover:scale-[1.03] shadow-lg cursor-pointer"
                     >
-                      {banner.cta}
+                      {banner.buttonText || "Shop Now"}
                     </button>
                   </motion.div>
                 </motion.div>
