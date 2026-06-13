@@ -144,11 +144,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                 <Star 
                   key={i} 
                   size={12} 
-                  className={i < Math.floor(product.rating) ? "fill-amber-400" : "text-zinc-200"} 
+                  className={i < Math.floor(product.rating || 5.0) ? "fill-amber-400" : "text-zinc-200"} 
                 />
               ))}
             </div>
-            <span className="text-[10px] text-zinc-400 font-bold">({product.reviewsCount || 12})</span>
+            <span className="text-[10px] text-zinc-400 font-bold">({product.reviewsCount || 0})</span>
           </div>
         </div>
 

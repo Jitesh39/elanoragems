@@ -4,15 +4,15 @@ import React, { useState, useEffect, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Heart, 
-  ShoppingBag, 
-  Star, 
-  ChevronRight, 
-  Truck, 
-  RotateCcw, 
-  ShieldCheck, 
-  Maximize2, 
+import {
+  Heart,
+  ShoppingBag,
+  Star,
+  ChevronRight,
+  Truck,
+  RotateCcw,
+  ShieldCheck,
+  Maximize2,
   X,
   MessageSquare
 } from "lucide-react";
@@ -22,7 +22,7 @@ import { CartDrawer } from "@/components/CartDrawer";
 import { ProductCard } from "@/components/ProductCard";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
-import { collection, query, where, limit, onSnapshot } from "firebase/firestore";
+import { collection, query, where, limit, onSnapshot, addDoc, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 interface PageProps {
@@ -52,14 +52,16 @@ export default function ProductDetailsPage({ params }: PageProps) {
   const [quantity, setQuantity] = useState(1);
 
   // Review System States
-  const [reviews, setReviews] = useState([
-    { id: 1, author: "Aishwarya R.", rating: 5, date: "2026-05-18", comment: "Absolutely stunning! The packaging was so premium, and the silver ring shines so brightly. Recommending to everyone!" },
-    { id: 2, author: "Rahul K.", rating: 4, date: "2026-05-24", comment: "Bought this as a gift for my wife. She loves it. The size guide was very accurate." }
-  ]);
+  const [reviews, setReviews] = useState<any[]>([]);
   const [newAuthor, setNewAuthor] = useState("");
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState("");
   const [reviewSuccess, setReviewSuccess] = useState(false);
+
+  const reviewsCount = reviews.length;
+  const averageRating = reviewsCount > 0
+    ? parseFloat((reviews.reduce((sum, r) => sum + r.rating, 0) / reviewsCount).toFixed(1))
+    : 5.0;
 
   // Fetch product from firestore
   useEffect(() => {
@@ -72,12 +74,12 @@ export default function ProductDetailsPage({ params }: PageProps) {
         const docSnap = snapshot.docs[0];
         const prodData: any = { id: docSnap.id, ...docSnap.data() };
         setProduct(prodData);
-        
+
         const firstImg = (prodData.images && prodData.images.length > 0)
           ? prodData.images[0]
           : (prodData.image || "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600&q=80");
         setActiveImage(firstImg);
-        
+
         const isRing = prodData.category === "rings" || prodData.category === "ring" || prodData.category?.toLowerCase().includes("ring");
         const sizesList = prodData.sizes || [];
         if (isRing && sizesList.length > 0) {
@@ -92,6 +94,33 @@ export default function ProductDetailsPage({ params }: PageProps) {
     });
     return () => unsubscribe();
   }, [slug]);
+
+  // Fetch product reviews from Firestore
+  useEffect(() => {
+    if (!product?.id) return;
+    const q = query(
+      collection(db, "reviews"),
+      where("productId", "==", product.id)
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const revs: any[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        revs.push({
+          id: doc.id,
+          author: data.customerName || "Anonymous",
+          rating: data.rating || 5,
+          date: data.createdAt ? new Date(data.createdAt).toLocaleDateString() : "N/A",
+          comment: data.comment || "",
+          createdAt: data.createdAt || ""
+        });
+      });
+      // Sort reviews newest first in memory by createdAt
+      revs.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      setReviews(revs);
+    });
+    return () => unsubscribe();
+  }, [product?.id]);
 
   // Fetch related products
   useEffect(() => {
@@ -183,24 +212,52 @@ export default function ProductDetailsPage({ params }: PageProps) {
   };
 
   // Handle Review Submission
-  const handleReviewSubmit = (e: React.FormEvent) => {
+  const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!product?.id) return;
     if (newAuthor.trim() === "" || newComment.trim() === "") return;
 
-    const newReview = {
-      id: Date.now(),
-      author: newAuthor,
-      rating: newRating,
-      date: new Date().toISOString().split("T")[0],
-      comment: newComment
-    };
+    try {
+      const timestamp = new Date().toISOString();
+      const newReview = {
+        productId: product.id,
+        productName: product.name,
+        customerName: newAuthor.trim(),
+        rating: newRating,
+        comment: newComment.trim(),
+        createdAt: timestamp
+      };
 
-    setReviews([newReview, ...reviews]);
-    setNewAuthor("");
-    setNewComment("");
-    setNewRating(5);
-    setReviewSuccess(true);
-    setTimeout(() => setReviewSuccess(false), 4000);
+      // 1. Add to reviews collection
+      await addDoc(collection(db, "reviews"), newReview);
+
+      // 2. Calculate updated product rating & reviewsCount
+      const updatedReviews = [
+        ...reviews.map(r => ({ rating: r.rating })),
+        { rating: newRating }
+      ];
+      const newReviewsCount = updatedReviews.length;
+      const newAverageRating = parseFloat(
+        (updatedReviews.reduce((sum, r) => sum + r.rating, 0) / newReviewsCount).toFixed(1)
+      );
+
+      // 3. Update products collection document
+      const productRef = doc(db, "products", product.id);
+      await updateDoc(productRef, {
+        rating: newAverageRating,
+        reviewsCount: newReviewsCount
+      });
+
+      // Reset form
+      setNewAuthor("");
+      setNewComment("");
+      setNewRating(5);
+      setReviewSuccess(true);
+      setTimeout(() => setReviewSuccess(false), 4000);
+    } catch (err) {
+      console.error("Error submitting review:", err);
+      alert("Failed to submit review. Please try again.");
+    }
   };
 
   // Gallery images array
@@ -262,7 +319,7 @@ export default function ProductDetailsPage({ params }: PageProps) {
 
         {/* Main Product Container */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
-          
+
           {/* Breadcrumbs */}
           <nav className="flex items-center gap-2 text-xs font-semibold text-zinc-400 mb-8 overflow-x-auto whitespace-nowrap py-1">
             <Link href="/" className="hover:text-secondary uppercase">Home</Link>
@@ -276,31 +333,31 @@ export default function ProductDetailsPage({ params }: PageProps) {
 
           {/* Product Grid Area */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 mb-16">
-            
+
             {/* Left: Interactive Image Gallery (6 cols) */}
             <div className="lg:col-span-6 flex flex-col lg:flex-row-reverse gap-4">
-              
+
               {/* Main Image View Wrapper */}
               <div className="flex-1 w-full min-w-0">
                 {/* Desktop Main Photo Container (hidden on mobile) */}
-                <div 
+                <div
                   className="hidden lg:block relative aspect-square w-full rounded-2xl overflow-hidden border border-zinc-100 bg-accent/20 cursor-crosshair animate-fade-in"
                   onMouseMove={handleMouseMove}
                   onMouseLeave={handleMouseLeave}
                 >
                   {/* Hover zoom magnifier layer */}
-                  <div 
-                    className="absolute inset-0 pointer-events-none z-10 border border-secondary/10" 
-                    style={{ 
-                      ...zoomStyle, 
+                  <div
+                    className="absolute inset-0 pointer-events-none z-10 border border-secondary/10"
+                    style={{
+                      ...zoomStyle,
                       backgroundRepeat: "no-repeat"
-                    }} 
+                    }}
                   />
 
                   {/* Main Image */}
-                  <img 
-                    src={activeImage || "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600&q=80"} 
-                    alt={product.name} 
+                  <img
+                    src={activeImage || "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600&q=80"}
+                    alt={product.name}
                     className="w-full h-full object-cover"
                   />
 
@@ -316,7 +373,7 @@ export default function ProductDetailsPage({ params }: PageProps) {
 
                 {/* Mobile Swipeable Image Gallery (lg:hidden) */}
                 <div className="lg:hidden relative aspect-square w-full rounded-2xl overflow-hidden border border-zinc-100 bg-accent/20">
-                  <div 
+                  <div
                     id="mobile-gallery-scroll"
                     className="flex overflow-x-auto scroll-smooth snap-x snap-mandatory no-scrollbar w-full h-full"
                     onScroll={(e) => {
@@ -334,9 +391,9 @@ export default function ProductDetailsPage({ params }: PageProps) {
                   >
                     {galleryImages.map((img: string, index: number) => (
                       <div key={index} className="flex-shrink-0 w-full h-full snap-start select-none">
-                        <img 
-                          src={img} 
-                          alt={`${product.name} - ${index + 1}`} 
+                        <img
+                          src={img}
+                          alt={`${product.name} - ${index + 1}`}
                           className="w-full h-full object-cover"
                           draggable="false"
                         />
@@ -360,9 +417,8 @@ export default function ProductDetailsPage({ params }: PageProps) {
                     <button
                       key={index}
                       onClick={() => handleThumbnailClick(img, index)}
-                      className={`flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border bg-accent/20 transition-all cursor-pointer ${
-                        isActive ? "border-secondary scale-[0.98] ring-1 ring-secondary" : "border-zinc-200 hover:border-zinc-300"
-                      }`}
+                      className={`flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border bg-accent/20 transition-all cursor-pointer ${isActive ? "border-secondary scale-[0.98] ring-1 ring-secondary" : "border-zinc-200 hover:border-zinc-300"
+                        }`}
                     >
                       <img src={img} alt="" className="w-full h-full object-cover" />
                     </button>
@@ -375,7 +431,7 @@ export default function ProductDetailsPage({ params }: PageProps) {
             {/* Right: Product Details Panel (7 cols) */}
             <div className="lg:col-span-6 flex flex-col justify-between">
               <div className="space-y-5">
-                
+
                 {/* Meta details */}
                 <div className="space-y-1">
                   <span className="text-secondary text-xs font-bold uppercase tracking-widest">{product.material || "Premium Silver"}</span>
@@ -389,15 +445,15 @@ export default function ProductDetailsPage({ params }: PageProps) {
                   <div className="flex items-center gap-1">
                     <div className="flex text-amber-400">
                       {[...Array(5)].map((_, i) => (
-                        <Star 
-                          key={i} 
-                          size={16} 
-                          className={i < Math.floor(product.rating) ? "fill-amber-400" : "text-zinc-200"} 
+                        <Star
+                          key={i}
+                          size={16}
+                          className={i < Math.floor(reviewsCount > 0 ? averageRating : (product.rating || 5.0)) ? "fill-amber-400" : "text-zinc-200"}
                         />
                       ))}
                     </div>
                     <span className="text-xs font-semibold text-zinc-500">
-                      {product.rating} ({reviews.length} Reviews)
+                      {reviewsCount > 0 ? averageRating : (product.rating || 5.0)} ({reviewsCount} {reviewsCount === 1 ? "Review" : "Reviews"})
                     </span>
                   </div>
 
@@ -444,11 +500,10 @@ export default function ProductDetailsPage({ params }: PageProps) {
                             <button
                               key={size}
                               onClick={() => setSelectedSize(size)}
-                              className={`px-4 py-2 border rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                                isSelected 
-                                  ? "border-primary bg-primary text-white shadow-sm" 
-                                  : "border-zinc-200 hover:border-zinc-400 text-zinc-600"
-                              }`}
+                              className={`px-4 py-2 border rounded-lg text-xs font-bold transition-all cursor-pointer ${isSelected
+                                ? "border-primary bg-primary text-white shadow-sm"
+                                : "border-zinc-200 hover:border-zinc-400 text-zinc-600"
+                                }`}
                             >
                               {size}
                             </button>
@@ -467,14 +522,14 @@ export default function ProductDetailsPage({ params }: PageProps) {
                 <div className="space-y-2.5">
                   <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 block">Quantity</span>
                   <div className="flex items-center border border-zinc-200 rounded-lg w-32 justify-between p-1 bg-white">
-                    <button 
+                    <button
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
                       className="w-8 h-8 rounded hover:bg-zinc-50 flex items-center justify-center font-bold text-zinc-500"
                     >
                       -
                     </button>
                     <span className="text-sm font-bold text-dark">{quantity}</span>
-                    <button 
+                    <button
                       onClick={() => setQuantity(quantity + 1)}
                       className="w-8 h-8 rounded hover:bg-zinc-50 flex items-center justify-center font-bold text-zinc-500"
                     >
@@ -488,7 +543,7 @@ export default function ProductDetailsPage({ params }: PageProps) {
               {/* Action Buttons Panel */}
               <div className="space-y-4 pt-8 lg:pt-12">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  
+
                   {/* Add To Cart */}
                   <button
                     onClick={handleAddToCart}
@@ -548,7 +603,7 @@ export default function ProductDetailsPage({ params }: PageProps) {
             <section className="mb-16 border-t border-zinc-100 pt-10">
               <h3 className="font-serif text-xl font-bold text-primary mb-6">Specifications &amp; Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm text-zinc-600 bg-accent/40 rounded-2xl p-6 md:p-8">
-                
+
                 <div className="space-y-4">
                   {product.specifications.slice(0, Math.ceil(product.specifications.length / 2)).map((spec: any, idx: number) => (
                     <div key={idx} className="flex justify-between border-b border-zinc-200/50 pb-2">
@@ -574,7 +629,7 @@ export default function ProductDetailsPage({ params }: PageProps) {
           {/* Reviews Rating Center */}
           <section className="mb-16 border-t border-zinc-100 pt-10">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-              
+
               {/* Write Review Form (5 cols) */}
               <div className="lg:col-span-5 bg-zinc-50 border border-zinc-100 rounded-2xl p-6 h-fit">
                 <h4 className="font-serif text-lg font-bold text-primary mb-4">Write a Review</h4>
@@ -590,7 +645,7 @@ export default function ProductDetailsPage({ params }: PageProps) {
                       required
                     />
                   </div>
-                  
+
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Rating Star</label>
                     <div className="flex gap-1">
@@ -641,29 +696,37 @@ export default function ProductDetailsPage({ params }: PageProps) {
                 </h4>
 
                 <div className="space-y-4 max-h-[420px] overflow-y-auto pr-2">
-                  {reviews.map((rev) => (
-                    <div key={rev.id} className="p-4 border border-zinc-100 rounded-2xl bg-white space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-dark">{rev.author}</span>
-                        <span className="text-[10px] text-zinc-400 font-semibold">{rev.date}</span>
-                      </div>
-                      
-                      {/* stars */}
-                      <div className="flex text-amber-400">
-                        {[...Array(5)].map((_, i) => (
-                          <Star 
-                            key={i} 
-                            size={10} 
-                            className={i < rev.rating ? "fill-amber-400" : "text-zinc-200"} 
-                          />
-                        ))}
-                      </div>
+                  {reviews.length > 0 ? (
+                    reviews.map((rev) => (
+                      <div key={rev.id} className="p-4 border border-zinc-100 rounded-2xl bg-white space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-dark">{rev.author}</span>
+                          <span className="text-[10px] text-zinc-400 font-semibold">{rev.date}</span>
+                        </div>
 
-                      <p className="text-xs text-zinc-600 leading-relaxed normal-case">
-                        {rev.comment}
-                      </p>
+                        {/* stars */}
+                        <div className="flex text-amber-400">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              size={10}
+                              className={i < rev.rating ? "fill-amber-400" : "text-zinc-200"}
+                            />
+                          ))}
+                        </div>
+
+                        <p className="text-xs text-zinc-600 leading-relaxed normal-case">
+                          {rev.comment}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-8 text-center bg-zinc-50 border border-zinc-100 rounded-2xl">
+                      <MessageSquare size={36} className="text-zinc-300 mx-auto mb-2" />
+                      <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">No reviews yet</p>
+                      <p className="text-[10px] text-zinc-400 mt-1">Be the first to review this product.</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
 
@@ -702,9 +765,9 @@ export default function ProductDetailsPage({ params }: PageProps) {
 
             {/* Modal Body */}
             <div className="relative max-w-4xl w-full h-full max-h-[80vh] flex items-center justify-center z-10">
-              <img 
-                src={activeImage} 
-                alt={product.name} 
+              <img
+                src={activeImage}
+                alt={product.name}
                 className="max-w-full max-h-full object-contain rounded-lg"
               />
 

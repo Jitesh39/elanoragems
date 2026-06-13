@@ -19,7 +19,8 @@ import {
   Store,
   LogOut,
   Menu,
-  X
+  X,
+  MessageSquare
 } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -33,6 +34,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const navigation = [
     { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
     { name: "Manage Products", href: "/admin/products", icon: PackageSearch },
+    { name: "Manage Reviews", href: "/admin/reviews", icon: MessageSquare },
     { name: "Categories", href: "/admin/categories", icon: Tags },
     { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
     { name: "Gift Sets", href: "/admin/gift-sets", icon: Gift },
