@@ -8,7 +8,7 @@ import { NewArrivals } from "@/components/NewArrivals";
 import { Bestsellers } from "@/components/Bestsellers";
 import { InfluencerSpotlight } from "@/components/InfluencerSpotlight";
 import { OccasionSection } from "@/components/OccasionSection";
-import { GiftSection } from "@/components/GiftSection";
+import { TestimonialsSection } from "@/components/TestimonialsSection";
 import { Footer } from "@/components/Footer";
 import { CartDrawer } from "@/components/CartDrawer";
 
@@ -16,8 +16,8 @@ const orgSchema = {
   "@context": "https://schema.org",
   "@type": "JewelryStore",
   "name": "ElanoraGems",
-  "image": "https://elanoragems.com/logo.png",
-  "url": "https://elanoragems.com",
+  "image": "https://elanoragems.in/logo.png",
+  "url": "https://elanoragems.in",
   "telephone": "+919876543210",
   "priceRange": "INR",
   "address": {
@@ -63,8 +63,9 @@ export default function Home() {
           {/* Lifestyle Occasion Grid Section */}
           <OccasionSection />
 
-          {/* Budget-based pastel Box section */}
-          <GiftSection />
+          {/* Testimonials Carousel Section */}
+          <TestimonialsSection />
+
         </main>
 
         {/* Global Footer & Sliding Cart Drawer */}

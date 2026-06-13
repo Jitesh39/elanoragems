@@ -6,6 +6,7 @@ import { db } from "@/lib/firebase";
 import { Save, Store, Mail, Phone, MapPin, Percent, Link as LinkIcon, Search, LayoutTemplate } from "lucide-react";
 import { HeroSectionManager } from "@/components/admin/HeroSectionManager";
 import { InfluencerManager } from "@/components/admin/InfluencerManager";
+import { CustomerTestimonialsManager } from "@/components/admin/CustomerTestimonialsManager";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<"store" | "site">("store");
@@ -216,6 +217,10 @@ export default function SettingsPage() {
 
           <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-6">
             <InfluencerManager />
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-6">
+            <CustomerTestimonialsManager />
           </div>
 
         </div>

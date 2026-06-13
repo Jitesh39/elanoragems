@@ -14,7 +14,6 @@ import {
   ChevronDown,
   Sparkles,
   Percent,
-  Gift,
   ArrowRight
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -360,7 +359,6 @@ export const Header: React.FC = () => {
                       <li><Link href="/collections?category=pendants" className="hover:text-primary transition-colors">Pendants</Link></li>
                       <li><Link href="/collections?category=toe-rings" className="hover:text-primary transition-colors">Toe Rings</Link></li>
                       <li><Link href="/collections?category=kada" className="hover:text-primary transition-colors">Kada</Link></li>
-                      <li><Link href="/collections?category=gift-sets" className="hover:text-primary transition-colors">Gift Sets</Link></li>
                     </ul>
                   </div>
                   <div className="col-span-1">
@@ -445,21 +443,6 @@ export const Header: React.FC = () => {
                     <li><Link href="/collections?gender=kids&category=earrings" className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">Kids Earrings</Link></li>
                     <li><Link href="/collections?gender=kids&category=bracelets" className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">Kids Bracelets</Link></li>
                     <li><Link href="/collections?gender=kids&category=pendants" className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">Kids Pendants</Link></li>
-                  </ul>
-                </div>
-              </li>
-
-              {/* Divine & Gifting */}
-              <li className="group relative py-2 cursor-pointer">
-                <span className="flex items-center gap-1 hover:text-secondary transition-colors">
-                  Divine & Gifting <ChevronDown size={12} className="text-zinc-400 group-hover:text-secondary transition-colors" />
-                </span>
-                <div className="absolute top-full left-0 w-52 bg-white border border-zinc-100 shadow-xl rounded-b-lg p-3 opacity-0 translate-y-3 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 z-50">
-                  <ul className="space-y-2 text-xs font-semibold text-zinc-600">
-                    <li><Link href="/collections?category=gift-sets" className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">Gift Sets</Link></li>
-                    <li><Link href="/collections?price=999" className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">Gifts under ₹999</Link></li>
-                    <li><Link href="/collections?price=1999" className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">Gifts under ₹1999</Link></li>
-                    <li><Link href="/collections?price=2999" className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">Gifts under ₹2999</Link></li>
                   </ul>
                 </div>
               </li>

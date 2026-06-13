@@ -97,16 +97,16 @@ export const OccasionSection: React.FC = () => {
   };
 
   return (
-    <section 
-      className="py-16 sm:py-20 lg:py-24 w-full overflow-hidden"
+    <section
+      className="py-12 sm:py-15 lg:py-20 w-full overflow-hidden"
       style={{
         background: "linear-gradient(180deg, #F4F2EC 0%, #D8F0EC 50%, #38C6C6 100%)"
       }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Section Header */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -123,59 +123,59 @@ export const OccasionSection: React.FC = () => {
 
         {/* 1. DESKTOP & TABLET LAYOUT (>= 768px) */}
         <div className="hidden md:flex flex-row items-end justify-between gap-6 lg:gap-8 relative min-h-[480px]">
-          
+
           {/* Left Panel: Models Image (aligned to bottom, overlapping content card) */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
             className="w-[32%] lg:w-[30%] flex justify-start z-10 select-none pointer-events-none"
           >
-            <img 
-              src="/occasion_models.png" 
-              alt="Models wearing luxury jewellery" 
+            <img
+              src="/occasion_models.png"
+              alt="Models wearing luxury jewellery"
               className="h-[430px] lg:h-[490px] object-contain transform translate-y-8 lg:translate-y-12 -mr-8 lg:-mr-12"
             />
           </motion.div>
 
           {/* Right Panel: White Content Card containing Slider and button */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
             className="w-[68%] lg:w-[70%] bg-white rounded-[24px] shadow-xl p-8 lg:p-10 relative flex flex-col justify-between"
           >
-            
+
             {/* Carousel Container */}
             <div className="relative w-full overflow-hidden px-1">
-              
+
               {/* Carousel Track */}
-              <div 
+              <div
                 className="flex transition-transform duration-500 ease-out -mx-2 lg:-mx-3"
-                style={{ 
-                  transform: `translateX(-${safeCurrentIndex * (100 / visibleCards)}%)` 
+                style={{
+                  transform: `translateX(-${safeCurrentIndex * (100 / visibleCards)}%)`
                 }}
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
               >
                 {OCCASIONS.map((occ) => (
-                  <div 
-                    key={occ.slug} 
+                  <div
+                    key={occ.slug}
                     className="flex-shrink-0 px-2 lg:px-3"
                     style={{ width: `${100 / visibleCards}%` }}
                   >
-                    <Link 
-                      href={`/collections?occasion=${occ.slug}`} 
+                    <Link
+                      href={`/collections?occasion=${occ.slug}`}
                       className="group block text-center cursor-pointer"
                     >
                       <div className="relative overflow-hidden rounded-[20px] aspect-[1/1.1] bg-zinc-100 shadow-sm transition-all duration-500 ease-out group-hover:shadow-md group-hover:-translate-y-1">
-                        <img 
-                          src={occ.image} 
-                          alt={occ.title} 
-                          className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105" 
+                        <img
+                          src={occ.image}
+                          alt={occ.title}
+                          className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                         />
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300" />
                       </div>
@@ -189,8 +189,8 @@ export const OccasionSection: React.FC = () => {
 
               {/* Slider Navigation Arrows */}
               {safeCurrentIndex > 0 && (
-                <button 
-                  onClick={handlePrev} 
+                <button
+                  onClick={handlePrev}
                   aria-label="Previous occasion"
                   className="absolute left-1 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center border border-zinc-100 text-zinc-700 hover:bg-zinc-50 hover:text-teal-600 transition-all duration-300 cursor-pointer"
                 >
@@ -198,8 +198,8 @@ export const OccasionSection: React.FC = () => {
                 </button>
               )}
               {safeCurrentIndex < maxIndex && (
-                <button 
-                  onClick={handleNext} 
+                <button
+                  onClick={handleNext}
                   aria-label="Next occasion"
                   className="absolute right-1 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center border border-zinc-100 text-zinc-700 hover:bg-zinc-50 hover:text-teal-600 transition-all duration-300 cursor-pointer"
                 >
@@ -210,38 +210,38 @@ export const OccasionSection: React.FC = () => {
 
             {/* Centered Shop Now Button inside desktop card */}
             <div className="flex justify-center mt-10">
-              <Link 
+              <Link
                 href="/collections"
                 className="bg-[#2cb0b0] hover:bg-[#229292] text-white font-medium px-10 py-3.5 rounded-xl transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 text-center cursor-pointer"
               >
                 Shop Now
               </Link>
             </div>
-            
+
           </motion.div>
         </div>
 
         {/* 2. MOBILE LAYOUT (< 768px) */}
         <div className="block md:hidden">
-          
+
           {/* Stacked Model Image */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
             className="w-full flex justify-center mb-6"
           >
-            <img 
-              src="/occasion_models.png" 
-              alt="Models wearing luxury jewellery" 
-              className="h-[300px] xs:h-[350px] object-contain select-none pointer-events-none" 
+            <img
+              src="/occasion_models.png"
+              alt="Models wearing luxury jewellery"
+              className="h-[300px] xs:h-[350px] object-contain select-none pointer-events-none"
             />
           </motion.div>
 
           {/* Stacked Shop Now Button below models */}
           <div className="flex justify-center mb-10">
-            <Link 
+            <Link
               href="/collections"
               className="bg-[#2cb0b0] hover:bg-[#229292] text-white font-medium px-10 py-3.5 rounded-xl transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 text-center w-full sm:w-auto cursor-pointer"
             >
@@ -259,15 +259,15 @@ export const OccasionSection: React.FC = () => {
                 viewport={{ once: true }}
                 transition={{ delay: idx * 0.05, duration: 0.4 }}
               >
-                <Link 
-                  href={`/collections?occasion=${occ.slug}`} 
+                <Link
+                  href={`/collections?occasion=${occ.slug}`}
                   className="group block text-center cursor-pointer"
                 >
                   <div className="relative overflow-hidden rounded-[20px] aspect-[1/1.1] bg-zinc-100 shadow-sm transition-all duration-500 ease-out group-hover:shadow-md group-hover:-translate-y-1">
-                    <img 
-                      src={occ.image} 
-                      alt={occ.title} 
-                      className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105" 
+                    <img
+                      src={occ.image}
+                      alt={occ.title}
+                      className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300" />
                   </div>

@@ -113,8 +113,7 @@ export const HeroBanner: React.FC = () => {
                     variants={itemVariants}
                     className="text-secondary text-xs sm:text-sm font-bold uppercase tracking-widest flex items-center gap-2"
                   >
-                    <span className="w-8 h-[2px] bg-secondary inline-block"></span>
-                    Exquisite Artistry
+
                   </motion.span>
 
                   <motion.h1

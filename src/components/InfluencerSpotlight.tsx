@@ -4,9 +4,10 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, ArrowLeft, ArrowRight } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Navigation, Autoplay, FreeMode } from "swiper/modules";
+import { Navigation, Autoplay, FreeMode, Pagination } from "swiper/modules";
 import 'swiper/css';
 import 'swiper/css/navigation';
+import 'swiper/css/pagination';
 import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import InfluencerReelModal from "./InfluencerReelModal";
@@ -77,32 +78,31 @@ export const InfluencerSpotlight: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-12">
-          <span className="text-secondary text-xs font-bold tracking-widest flex items-center justify-center gap-1">
-            <Instagram size={14} /> ElanoraGems
-          </span>
-          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-primary mt-1">Influencer Spotlight</h2>
+          <h2 className="font-serif text-3xl sm:text-4xl font-light text-primary mt-0">Influencer Spotlight</h2>
         </div>
 
         {/* Reels Horizontal Slider */}
         <Swiper
-          modules={[Navigation, Autoplay, FreeMode]}
-          spaceBetween={20}
-          slidesPerView={4}
+          modules={[Navigation, Autoplay, FreeMode, Pagination]}
+          spaceBetween={10}
+          slidesPerView={3}
           freeMode={false}
           navigation={{
             prevEl: '.influencer-prev',
             nextEl: '.influencer-next',
           }}
+          pagination={{
+            clickable: true,
+          }}
           autoplay={{ delay: 3000, disableOnInteraction: false }}
           loop={true}
           breakpoints={{
-            480: { slidesPerView: 2 },
-            768: { slidesPerView: 3 },
-            1024: { slidesPerView: 4 },
+            640: { slidesPerView: 4, spaceBetween: 16 },
+            1024: { slidesPerView: 5, spaceBetween: 20 },
           }}
           onInit={updateVisibleIndices}
           onSlideChange={(swiper) => updateVisibleIndices(swiper)}
-          className="relative w-full"
+          className="relative w-full pb-10"
         >
           {reels.map((reel, index) => (
             <SwiperSlide key={reel.id} className="w-full">
@@ -133,22 +133,24 @@ export const InfluencerSpotlight: React.FC = () => {
                 {/* Gradient Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-                {/* Play Icon Container */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-12 h-12 rounded-full bg-white/35 backdrop-blur-md border border-white/50 flex items-center justify-center text-white transform scale-90 group-hover:scale-100 group-hover:bg-secondary transition-all duration-300">
-                    <Play size={20} className="fill-white translate-x-[1px]" />
-                  </div>
-                </div>
 
                 {/* Bottom Creator Info */}
                 <div className="absolute bottom-4 left-4 right-4 text-white">
                   <h4 className="text-sm font-bold truncate">{reel.title}</h4>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="w-5 h-5 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center">
-                      <Instagram size={10} />
-                    </div>
-                    <span className="text-xs font-semibold tracking-wider truncate">{reel.instagram}</span>
-                  </div>
+                  {reel.instagram && reel.instagram.trim() !== "" && (
+                    <a
+                      href={`https://www.instagram.com/${reel.instagram.trim().replace(/^@/, "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-2 mt-1.5 text-xs font-semibold tracking-wider hover:text-[#D4AF37] transition-colors"
+                    >
+                      <div className="w-5 h-5 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center">
+                        <Instagram size={10} />
+                      </div>
+                      <span className="truncate">{reel.instagram}</span>
+                    </a>
+                  )}
                 </div>
               </motion.div>
             </SwiperSlide>
@@ -157,10 +159,10 @@ export const InfluencerSpotlight: React.FC = () => {
           {/* Navigation Arrows – show only when more reels than perView */}
           {reels.length > 1 && (
             <>
-              <button className="influencer-prev absolute left-2 top-1/2 -translate-y-1/2 bg-white/70 rounded-full p-2 hover:bg-white transition-colors z-10">
+              <button className="influencer-prev absolute left-2 top-1/2 -translate-y-1/2 bg-white/70 rounded-full p-2 hover:bg-white transition-colors z-10 hidden md:flex items-center justify-center cursor-pointer">
                 <ArrowLeft size={20} className="text-[#0F2F6B]" />
               </button>
-              <button className="influencer-next absolute right-2 top-1/2 -translate-y-1/2 bg-white/70 rounded-full p-2 hover:bg-white transition-colors z-10">
+              <button className="influencer-next absolute right-2 top-1/2 -translate-y-1/2 bg-white/70 rounded-full p-2 hover:bg-white transition-colors z-10 hidden md:flex items-center justify-center cursor-pointer">
                 <ArrowRight size={20} className="text-[#0F2F6B]" />
               </button>
             </>
