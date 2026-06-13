@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Plus, Trash2, Edit2, MoveUp, MoveDown, Save, X, Video, Loader2 } from "lucide-react";
 
@@ -139,7 +139,7 @@ export function InfluencerManager() {
         await addDoc(collection(db, "influencerReels"), {
           ...reelData,
           displayOrder: reels.length + 1,
-          createdAt: new Date().toISOString()
+          createdAt: serverTimestamp()
         });
       }
       

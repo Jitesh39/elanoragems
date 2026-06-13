@@ -1,36 +1,48 @@
 import { MetadataRoute } from "next";
-import { MOCK_PRODUCTS } from "@/lib/mockData";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://elanoragems.com";
 
-  // Dynamic product entries sitemap
-  const productEntries = MOCK_PRODUCTS.map((p) => ({
-    url: `${baseUrl}/product/${p.slug}`,
-    lastModified: new Date(),
-    changeFrequency: "weekly" as const,
-    priority: 0.8
-  }));
+  let productEntries: any[] = [];
+  let categoryEntries: any[] = [];
 
-  // Categories sitemap
-  const categories = [
-    "rings", 
-    "earrings", 
-    "necklaces", 
-    "bracelets", 
-    "anklets", 
-    "pendants", 
-    "toe-rings", 
-    "kada", 
-    "gift-sets"
-  ];
-  
-  const categoryEntries = categories.map((c) => ({
-    url: `${baseUrl}/collections?category=${c}`,
-    lastModified: new Date(),
-    changeFrequency: "weekly" as const,
-    priority: 0.7
-  }));
+  try {
+    const productsSnapshot = await getDocs(collection(db, "products"));
+    const products: any[] = [];
+    productsSnapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data && data.slug) {
+        products.push(data);
+      }
+    });
+    productEntries = products.map((p) => ({
+      url: `${baseUrl}/product/${p.slug}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.8
+    }));
+
+    const categoriesSnapshot = await getDocs(collection(db, "categories"));
+    const categories: any[] = [];
+    categoriesSnapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data) {
+        categories.push({ id: doc.id, ...data });
+      }
+    });
+    categoryEntries = categories
+      .filter((c) => c.isActive !== false)
+      .map((c) => ({
+        url: `${baseUrl}/collections?category=${c.slug || c.id}`,
+        lastModified: new Date(),
+        changeFrequency: "weekly" as const,
+        priority: 0.7
+      }));
+  } catch (error) {
+    console.error("Sitemap generation error:", error);
+  }
 
   return [
     {

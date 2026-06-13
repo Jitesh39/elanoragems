@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ProductCard } from "./ProductCard";
-import { MOCK_PRODUCTS } from "@/lib/mockData";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const TABS = [
   { id: "women", name: "Women Collection" },
@@ -14,21 +15,64 @@ const TABS = [
 
 export const Bestsellers: React.FC = () => {
   const [activeTab, setActiveTab] = useState("women");
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Filter products by gender matching active tab
-  const filteredProducts = MOCK_PRODUCTS.filter(
-    (product) => product.gender === activeTab
-  );
+  useEffect(() => {
+    const productsRef = collection(db, "products");
+    const unsubscribe = onSnapshot(productsRef, (snapshot) => {
+      const prods: any[] = [];
+      snapshot.forEach((doc) => {
+        prods.push({ id: doc.id, ...doc.data() });
+      });
+      setProducts(prods);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Filter products by gender matching active tab and isBestseller flag, sorted by newest first
+  const filteredProducts = products
+    .filter((product) => product.gender === activeTab && product.isBestseller === true)
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+
+  if (loading) {
+    return (
+      <section className="py-16 bg-accent/20 w-full animate-pulse">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8">
+            <span className="text-secondary text-xs font-bold tracking-widest uppercase">Our Bestsellers</span>
+            <div className="h-8 bg-zinc-200 rounded w-1/3 mx-auto mt-2" />
+          </div>
+          <div className="flex justify-center mb-12 gap-4 max-w-md mx-auto">
+            {TABS.map((tab) => (
+              <div key={tab.id} className="h-8 bg-zinc-200 rounded flex-1" />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="bg-zinc-200 rounded-2xl aspect-[3/4]" />
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // If no bestseller products exist, check if we want to hide it
+  const hasBestsellers = products.some(p => p.isBestseller === true);
+  if (!hasBestsellers) {
+    return null; // Hide the entire Bestsellers section if there are no bestseller products in the database
+  }
 
   return (
     <section className="py-16 bg-accent/20 w-full">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
         {/* Section Header */}
         <div className="text-center mb-8">
           <span className="text-secondary text-xs font-bold tracking-widest uppercase">Our Bestsellers</span>
           <h2 className="font-serif text-3xl sm:text-4xl font-bold text-primary mt-1">Timeless Favourites</h2>
-          {/* <p className="text-zinc-500 text-xs sm:text-sm max-w-md mx-auto mt-2 normal-case">Explore our highly-coveted designs, verified and adored by our style-conscious community.</p> */}
         </div>
 
         {/* Tab Buttons Row */}
@@ -88,7 +132,6 @@ export const Bestsellers: React.FC = () => {
             Shop Bestseller Collection
           </Link>
         </div>
-
       </div>
     </section>
   );

@@ -98,7 +98,7 @@ export const OccasionSection: React.FC = () => {
 
   return (
     <section
-      className="py-12 sm:py-15 lg:py-20 w-full overflow-hidden"
+      className="py-8 sm:py-12 lg:py-14 w-full overflow-hidden"
       style={{
         background: "linear-gradient(180deg, #F4F2EC 0%, #D8F0EC 50%, #38C6C6 100%)"
       }}
@@ -111,7 +111,7 @@ export const OccasionSection: React.FC = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-12 lg:mb-16"
+          className="text-center mb-8 lg:mb-10"
         >
           <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-light text-zinc-900 tracking-[0.15em] uppercase">
             Shop By Occasion
@@ -122,7 +122,7 @@ export const OccasionSection: React.FC = () => {
         </motion.div>
 
         {/* 1. DESKTOP & TABLET LAYOUT (>= 768px) */}
-        <div className="hidden md:flex flex-row items-end justify-between gap-6 lg:gap-8 relative min-h-[480px]">
+        <div className="hidden md:flex flex-row items-end justify-between gap-6 lg:gap-8 relative min-h-[380px]">
 
           {/* Left Panel: Models Image (aligned to bottom, overlapping content card) */}
           <motion.div
@@ -135,7 +135,7 @@ export const OccasionSection: React.FC = () => {
             <img
               src="/occasion_models.png"
               alt="Models wearing luxury jewellery"
-              className="h-[430px] lg:h-[490px] object-contain transform translate-y-8 lg:translate-y-12 -mr-8 lg:-mr-12"
+              className="h-[340px] lg:h-[390px] object-contain transform translate-y-4 lg:translate-y-6 -mr-8 lg:-mr-12"
             />
           </motion.div>
 
@@ -145,7 +145,7 @@ export const OccasionSection: React.FC = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
-            className="w-[68%] lg:w-[70%] bg-white rounded-[24px] shadow-xl p-8 lg:p-10 relative flex flex-col justify-between"
+            className="w-[68%] lg:w-[70%] bg-white rounded-[24px] shadow-xl p-6 lg:p-8 relative flex flex-col justify-between"
           >
 
             {/* Carousel Container */}
@@ -171,7 +171,7 @@ export const OccasionSection: React.FC = () => {
                       href={`/collections?occasion=${occ.slug}`}
                       className="group block text-center cursor-pointer"
                     >
-                      <div className="relative overflow-hidden rounded-[20px] aspect-[1/1.1] bg-zinc-100 shadow-sm transition-all duration-500 ease-out group-hover:shadow-md group-hover:-translate-y-1">
+                      <div className="relative overflow-hidden rounded-[20px] aspect-[1/1] bg-zinc-100 shadow-sm transition-all duration-500 ease-out group-hover:shadow-md group-hover:-translate-y-1">
                         <img
                           src={occ.image}
                           alt={occ.title}
@@ -209,10 +209,10 @@ export const OccasionSection: React.FC = () => {
             </div>
 
             {/* Centered Shop Now Button inside desktop card */}
-            <div className="flex justify-center mt-10">
+            <div className="flex justify-center mt-6">
               <Link
                 href="/collections"
-                className="bg-[#2cb0b0] hover:bg-[#229292] text-white font-medium px-10 py-3.5 rounded-xl transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 text-center cursor-pointer"
+                className="bg-[#2cb0b0] hover:bg-[#229292] text-white font-medium px-10 py-3 rounded-xl transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 text-center cursor-pointer"
               >
                 Shop Now
               </Link>
@@ -230,17 +230,17 @@ export const OccasionSection: React.FC = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="w-full flex justify-center mb-6"
+            className="w-full flex justify-center mb-4"
           >
             <img
               src="/occasion_models.png"
               alt="Models wearing luxury jewellery"
-              className="h-[300px] xs:h-[350px] object-contain select-none pointer-events-none"
+              className="h-[200px] xs:h-[240px] object-contain select-none pointer-events-none"
             />
           </motion.div>
 
           {/* Stacked Shop Now Button below models */}
-          <div className="flex justify-center mb-10">
+          <div className="flex justify-center mb-6">
             <Link
               href="/collections"
               className="bg-[#2cb0b0] hover:bg-[#229292] text-white font-medium px-10 py-3.5 rounded-xl transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 text-center w-full sm:w-auto cursor-pointer"
@@ -263,7 +263,7 @@ export const OccasionSection: React.FC = () => {
                   href={`/collections?occasion=${occ.slug}`}
                   className="group block text-center cursor-pointer"
                 >
-                  <div className="relative overflow-hidden rounded-[20px] aspect-[1/1.1] bg-zinc-100 shadow-sm transition-all duration-500 ease-out group-hover:shadow-md group-hover:-translate-y-1">
+                  <div className="relative overflow-hidden rounded-[20px] aspect-[1/1] bg-zinc-100 shadow-sm transition-all duration-500 ease-out group-hover:shadow-md group-hover:-translate-y-1">
                     <img
                       src={occ.image}
                       alt={occ.title}

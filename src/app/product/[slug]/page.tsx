@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -20,9 +20,10 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { CartDrawer } from "@/components/CartDrawer";
 import { ProductCard } from "@/components/ProductCard";
-import { MOCK_PRODUCTS } from "@/lib/mockData";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
+import { collection, query, where, limit, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -36,16 +37,18 @@ export default function ProductDetailsPage({ params }: PageProps) {
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
 
-  // Find product by slug
-  const product = MOCK_PRODUCTS.find((p) => p.slug === slug) || MOCK_PRODUCTS[0];
+  const [product, setProduct] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
 
   // Gallery States
-  const [activeImage, setActiveImage] = useState(product.image);
+  const [activeImage, setActiveImage] = useState("");
   const [zoomStyle, setZoomStyle] = useState<React.CSSProperties>({ display: "none" });
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
+  const isProgrammaticScroll = useRef(false);
 
   // Selector States
-  const [selectedSize, setSelectedSize] = useState(product.sizes?.[0] || "One Size");
+  const [selectedSize, setSelectedSize] = useState("");
   const [quantity, setQuantity] = useState(1);
 
   // Review System States
@@ -58,14 +61,68 @@ export default function ProductDetailsPage({ params }: PageProps) {
   const [newComment, setNewComment] = useState("");
   const [reviewSuccess, setReviewSuccess] = useState(false);
 
-  // Update active image when product changes
+  // Fetch product from firestore
   useEffect(() => {
-    if (product) {
-      setActiveImage(product.image);
-      setSelectedSize(product.sizes?.[0] || "One Size");
-      setQuantity(1);
-    }
+    if (!slug) return;
+    setLoading(true);
+    const productsRef = collection(db, "products");
+    const q = query(productsRef, where("slug", "==", slug), limit(1));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const docSnap = snapshot.docs[0];
+        const prodData: any = { id: docSnap.id, ...docSnap.data() };
+        setProduct(prodData);
+        
+        const firstImg = (prodData.images && prodData.images.length > 0)
+          ? prodData.images[0]
+          : (prodData.image || "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600&q=80");
+        setActiveImage(firstImg);
+        
+        const isRing = prodData.category === "rings" || prodData.category === "ring" || prodData.category?.toLowerCase().includes("ring");
+        const sizesList = prodData.sizes || [];
+        if (isRing && sizesList.length > 0) {
+          setSelectedSize(sizesList[0]);
+        } else {
+          setSelectedSize(isRing ? "Free Size" : "One Size");
+        }
+      } else {
+        setProduct(null);
+      }
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, [slug]);
+
+  // Fetch related products
+  useEffect(() => {
+    if (!product) return;
+    const productsRef = collection(db, "products");
+    const q = query(productsRef, where("category", "==", product.category));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const related: any[] = [];
+      snapshot.forEach((docSnap) => {
+        if (docSnap.id !== product.id) {
+          related.push({ id: docSnap.id, ...docSnap.data() });
+        }
+      });
+      related.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      setRelatedProducts(related.slice(0, 4));
+    });
+    return () => unsubscribe();
   }, [product]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col justify-between">
+        <Header />
+        <div className="flex-grow flex flex-col items-center justify-center py-24">
+          <div className="w-12 h-12 border-2 border-secondary border-t-transparent rounded-full animate-spin mb-4" />
+          <p className="font-serif text-sm font-semibold tracking-widest text-zinc-500 uppercase">Loading Ornaments...</p>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -103,7 +160,7 @@ export default function ProductDetailsPage({ params }: PageProps) {
       name: product.name,
       price: product.price,
       originalPrice: product.originalPrice,
-      image: product.image,
+      image: activeImage || (product.images && product.images.length > 0 ? product.images[0] : product.image || "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600&q=80"),
       size: selectedSize,
       material: product.material || "Sterling Silver",
       quantity: quantity
@@ -117,7 +174,7 @@ export default function ProductDetailsPage({ params }: PageProps) {
       name: product.name,
       price: product.price,
       originalPrice: product.originalPrice,
-      image: product.image,
+      image: activeImage || (product.images && product.images.length > 0 ? product.images[0] : product.image || "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600&q=80"),
       size: selectedSize,
       material: product.material || "Sterling Silver",
       quantity: quantity
@@ -146,17 +203,35 @@ export default function ProductDetailsPage({ params }: PageProps) {
     setTimeout(() => setReviewSuccess(false), 4000);
   };
 
-  // Filter Related Products
-  const relatedProducts = MOCK_PRODUCTS.filter(
-    (p) => p.category === product.category && p.id !== product.id
-  ).slice(0, 4);
+  // Gallery images array
+  const rawImages: string[] = (product && Array.isArray(product.images) && product.images.length > 0)
+    ? product.images.filter(Boolean)
+    : [product?.image || "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600&q=80", product?.hoverImage].filter(Boolean);
+
+  const galleryImages = rawImages.length > 0 ? rawImages : ["https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600&q=80"];
+
+  // Helper to change image and scroll mobile carousel
+  const handleThumbnailClick = (img: string, index: number) => {
+    setActiveImage(img);
+    const scrollContainer = document.getElementById("mobile-gallery-scroll");
+    if (scrollContainer) {
+      isProgrammaticScroll.current = true;
+      scrollContainer.scrollTo({
+        left: scrollContainer.clientWidth * index,
+        behavior: "smooth"
+      });
+      setTimeout(() => {
+        isProgrammaticScroll.current = false;
+      }, 500);
+    }
+  };
 
   // SEO Product Schema
   const productSchema = {
     "@context": "https://schema.org/",
     "@type": "Product",
     "name": product.name,
-    "image": [product.image, product.hoverImage].filter(Boolean),
+    "image": galleryImages,
     "description": product.description,
     "sku": product.id,
     "offers": {
@@ -202,50 +277,90 @@ export default function ProductDetailsPage({ params }: PageProps) {
           {/* Product Grid Area */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 mb-16">
             
-            {/* Left: Interactive Image Gallery (5 cols) */}
-            <div className="lg:col-span-6 space-y-4">
+            {/* Left: Interactive Image Gallery (6 cols) */}
+            <div className="lg:col-span-6 flex flex-col lg:flex-row-reverse gap-4">
               
-              {/* Main Photo Container */}
-              <div 
-                className="relative aspect-square w-full rounded-2xl overflow-hidden border border-zinc-100 bg-accent/20 cursor-crosshair"
-                onMouseMove={handleMouseMove}
-                onMouseLeave={handleMouseLeave}
-              >
-                {/* Hover zoom magnifier layer */}
+              {/* Main Image View Wrapper */}
+              <div className="flex-1 w-full min-w-0">
+                {/* Desktop Main Photo Container (hidden on mobile) */}
                 <div 
-                  className="absolute inset-0 pointer-events-none z-10 border border-secondary/10" 
-                  style={{ 
-                    ...zoomStyle, 
-                    backgroundRepeat: "no-repeat"
-                  }} 
-                />
-
-                {/* Main Image */}
-                <img 
-                  src={activeImage} 
-                  alt={product.name} 
-                  className="w-full h-full object-cover"
-                />
-
-                {/* Lightbox Trigger Icon */}
-                <button
-                  onClick={() => setFullscreenOpen(true)}
-                  className="absolute bottom-4 right-4 w-10 h-10 rounded-full bg-white/90 shadow-md flex items-center justify-center text-zinc-600 hover:text-secondary transition-colors z-20 cursor-pointer"
-                  aria-label="Fullscreen view"
+                  className="hidden lg:block relative aspect-square w-full rounded-2xl overflow-hidden border border-zinc-100 bg-accent/20 cursor-crosshair animate-fade-in"
+                  onMouseMove={handleMouseMove}
+                  onMouseLeave={handleMouseLeave}
                 >
-                  <Maximize2 size={16} />
-                </button>
+                  {/* Hover zoom magnifier layer */}
+                  <div 
+                    className="absolute inset-0 pointer-events-none z-10 border border-secondary/10" 
+                    style={{ 
+                      ...zoomStyle, 
+                      backgroundRepeat: "no-repeat"
+                    }} 
+                  />
+
+                  {/* Main Image */}
+                  <img 
+                    src={activeImage || "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600&q=80"} 
+                    alt={product.name} 
+                    className="w-full h-full object-cover"
+                  />
+
+                  {/* Lightbox Trigger Icon */}
+                  <button
+                    onClick={() => setFullscreenOpen(true)}
+                    className="absolute bottom-4 right-4 w-10 h-10 rounded-full bg-white/90 shadow-md flex items-center justify-center text-zinc-600 hover:text-secondary transition-colors z-20 cursor-pointer"
+                    aria-label="Fullscreen view"
+                  >
+                    <Maximize2 size={16} />
+                  </button>
+                </div>
+
+                {/* Mobile Swipeable Image Gallery (lg:hidden) */}
+                <div className="lg:hidden relative aspect-square w-full rounded-2xl overflow-hidden border border-zinc-100 bg-accent/20">
+                  <div 
+                    id="mobile-gallery-scroll"
+                    className="flex overflow-x-auto scroll-smooth snap-x snap-mandatory no-scrollbar w-full h-full"
+                    onScroll={(e) => {
+                      if (isProgrammaticScroll.current) return;
+                      const container = e.currentTarget;
+                      const scrollLeft = container.scrollLeft;
+                      const width = container.clientWidth;
+                      if (width === 0) return;
+                      const index = Math.round(scrollLeft / width);
+                      const currentImg = galleryImages[index];
+                      if (currentImg && currentImg !== activeImage) {
+                        setActiveImage(currentImg);
+                      }
+                    }}
+                  >
+                    {galleryImages.map((img: string, index: number) => (
+                      <div key={index} className="flex-shrink-0 w-full h-full snap-start select-none">
+                        <img 
+                          src={img} 
+                          alt={`${product.name} - ${index + 1}`} 
+                          className="w-full h-full object-cover"
+                          draggable="false"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  {/* Mobile Dot indicators pill */}
+                  {galleryImages.length > 1 && (
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white text-[10px] px-2.5 py-1 rounded-full font-bold select-none z-10">
+                      {galleryImages.indexOf(activeImage) >= 0 ? galleryImages.indexOf(activeImage) + 1 : 1} / {galleryImages.length}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Thumbnails Row */}
-              <div className="flex gap-3 overflow-x-auto pb-1">
-                {[product.image, product.hoverImage].filter(Boolean).map((img, index) => {
+              {/* Thumbnails Row / Column */}
+              <div className="flex flex-row lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto pb-1 lg:pb-0 lg:pr-1 no-scrollbar lg:max-h-[550px] shrink-0">
+                {galleryImages.map((img: string, index: number) => {
                   const isActive = activeImage === img;
                   return (
                     <button
                       key={index}
-                      onClick={() => setActiveImage(img!)}
-                      className={`flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border bg-accent/20 transition-all ${
+                      onClick={() => handleThumbnailClick(img, index)}
+                      className={`flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border bg-accent/20 transition-all cursor-pointer ${
                         isActive ? "border-secondary scale-[0.98] ring-1 ring-secondary" : "border-zinc-200 hover:border-zinc-300"
                       }`}
                     >
@@ -314,31 +429,37 @@ export default function ProductDetailsPage({ params }: PageProps) {
                   {product.description}
                 </p>
 
-                {/* Size Selector */}
-                {product.sizes && product.sizes.length > 0 && (
+                {/* Size Selector for Rings only */}
+                {(product.category === "rings" || product.category === "ring" || product.category?.toLowerCase().includes("ring")) && (
                   <div className="space-y-2.5">
                     <div className="flex justify-between items-center text-xs font-semibold uppercase tracking-wider text-zinc-500">
                       <span>Select Size</span>
                       <a href="#" className="text-secondary hover:underline text-[10px]">Size Guide</a>
                     </div>
-                    <div className="flex flex-wrap gap-2.5">
-                      {product.sizes.map((size) => {
-                        const isSelected = selectedSize === size;
-                        return (
-                          <button
-                            key={size}
-                            onClick={() => setSelectedSize(size)}
-                            className={`px-4 py-2 border rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                              isSelected 
-                                ? "border-primary bg-primary text-white shadow-sm" 
-                                : "border-zinc-200 hover:border-zinc-400 text-zinc-600"
-                            }`}
-                          >
-                            {size}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    {product.sizes && product.sizes.length > 0 ? (
+                      <div className="flex flex-wrap gap-2.5">
+                        {product.sizes.map((size: string) => {
+                          const isSelected = selectedSize === size;
+                          return (
+                            <button
+                              key={size}
+                              onClick={() => setSelectedSize(size)}
+                              className={`px-4 py-2 border rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                isSelected 
+                                  ? "border-primary bg-primary text-white shadow-sm" 
+                                  : "border-zinc-200 hover:border-zinc-400 text-zinc-600"
+                              }`}
+                            >
+                              {size}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-xs font-bold text-[#0F2F6B]">
+                        Size: <span className="text-secondary font-medium">Free Size</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -393,7 +514,7 @@ export default function ProductDetailsPage({ params }: PageProps) {
                     name: product.name,
                     price: product.price,
                     originalPrice: product.originalPrice,
-                    image: product.image
+                    image: activeImage || (product.images && product.images.length > 0 ? product.images[0] : product.image || "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600&q=80")
                   })}
                   className="w-full py-3 bg-accent text-zinc-700 hover:text-secondary rounded-xl font-bold uppercase tracking-wider text-[10px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                 >
@@ -423,42 +544,32 @@ export default function ProductDetailsPage({ params }: PageProps) {
           </div>
 
           {/* Technical Specifications Tab Panel */}
-          <section className="mb-16 border-t border-zinc-100 pt-10">
-            <h3 className="font-serif text-xl font-bold text-primary mb-6">Specifications &amp; Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm text-zinc-600 bg-accent/40 rounded-2xl p-6 md:p-8">
-              
-              <div className="space-y-4">
-                <div className="flex justify-between border-b border-zinc-200/50 pb-2">
-                  <span className="font-bold text-zinc-400 uppercase text-xs">Metal Finish</span>
-                  <span className="font-semibold text-primary">{product.material || "Sterling Silver"}</span>
+          {product.specifications && product.specifications.length > 0 && (
+            <section className="mb-16 border-t border-zinc-100 pt-10">
+              <h3 className="font-serif text-xl font-bold text-primary mb-6">Specifications &amp; Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm text-zinc-600 bg-accent/40 rounded-2xl p-6 md:p-8">
+                
+                <div className="space-y-4">
+                  {product.specifications.slice(0, Math.ceil(product.specifications.length / 2)).map((spec: any, idx: number) => (
+                    <div key={idx} className="flex justify-between border-b border-zinc-200/50 pb-2">
+                      <span className="font-bold text-zinc-400 uppercase text-xs">{spec.label}</span>
+                      <span className="font-semibold text-primary">{spec.value}</span>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex justify-between border-b border-zinc-200/50 pb-2">
-                  <span className="font-bold text-zinc-400 uppercase text-xs">Stone details</span>
-                  <span className="font-semibold text-primary">High-Grade Swiss Cubic Zirconia</span>
-                </div>
-                <div className="flex justify-between border-b border-zinc-200/50 pb-2">
-                  <span className="font-bold text-zinc-400 uppercase text-xs">Category type</span>
-                  <span className="font-semibold text-primary capitalize">{product.category}</span>
-                </div>
-              </div>
 
-              <div className="space-y-4">
-                <div className="flex justify-between border-b border-zinc-200/50 pb-2">
-                  <span className="font-bold text-zinc-400 uppercase text-xs">Purity Certify</span>
-                  <span className="font-semibold text-primary">BIS Hallmarked Or Equivalent</span>
+                <div className="space-y-4">
+                  {product.specifications.slice(Math.ceil(product.specifications.length / 2)).map((spec: any, idx: number) => (
+                    <div key={idx} className="flex justify-between border-b border-zinc-200/50 pb-2">
+                      <span className="font-bold text-zinc-400 uppercase text-xs">{spec.label}</span>
+                      <span className="font-semibold text-primary">{spec.value}</span>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex justify-between border-b border-zinc-200/50 pb-2">
-                  <span className="font-bold text-zinc-400 uppercase text-xs">Weight (average)</span>
-                  <span className="font-semibold text-primary">4.20 Grams</span>
-                </div>
-                <div className="flex justify-between border-b border-zinc-200/50 pb-2">
-                  <span className="font-bold text-zinc-400 uppercase text-xs">Care instructions</span>
-                  <span className="font-semibold text-primary">Store in airtight pouch, avoid water</span>
-                </div>
-              </div>
 
-            </div>
-          </section>
+              </div>
+            </section>
+          )}
 
           {/* Reviews Rating Center */}
           <section className="mb-16 border-t border-zinc-100 pt-10">

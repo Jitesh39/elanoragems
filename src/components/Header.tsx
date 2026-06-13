@@ -19,15 +19,11 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 // Simple mock products for instant search demonstration
-const SEARCH_PRODUCTS = [
-  { id: "1", name: "Premium Sterling Silver Ring", slug: "premium-sterling-silver-ring", category: "rings", price: 1299, image: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=300&q=80" },
-  { id: "2", name: "Royal Gold Plated Necklace", slug: "royal-gold-plated-necklace", category: "necklaces", price: 2499, image: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=300&q=80" },
-  { id: "3", name: "Elegant Rose Gold Bracelet", slug: "elegant-rose-gold-bracelet", category: "bracelets", price: 1899, image: "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=300&q=80" },
-  { id: "4", name: "Oxidized Silver Jhumkas", slug: "oxidized-silver-jhumkas", category: "earrings", price: 899, image: "https://images.unsplash.com/photo-1635767798638-3e25273a8236?w=300&q=80" },
-  { id: "5", name: "Solitaire Engagement Ring", slug: "solitaire-engagement-ring", category: "rings", price: 4999, image: "https://images.unsplash.com/photo-1603561591411-07134e71a2a9?w=300&q=80" }
-];
+// Instantly suggested products are loaded from Firestore dynamically
 
 export const Header: React.FC = () => {
   const pathname = usePathname();
@@ -38,13 +34,59 @@ export const Header: React.FC = () => {
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<typeof SEARCH_PRODUCTS>([]);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [dbProducts, setDbProducts] = useState<any[]>([]);
+  const [dbCategories, setDbCategories] = useState<any[]>([]);
   const [searchFocused, setSearchFocused] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Fetch Categories & Products for suggestions
+  useEffect(() => {
+    // Categories
+    const unsubCats = onSnapshot(collection(db, "categories"), (snapshot) => {
+      const cats: any[] = [];
+      snapshot.forEach((doc) => {
+        cats.push({ id: doc.id, ...doc.data() });
+      });
+      // Sort by displayOrder
+      cats.sort((a, b) => {
+        const orderA = typeof a.displayOrder === 'number' ? a.displayOrder : 9999;
+        const orderB = typeof b.displayOrder === 'number' ? b.displayOrder : 9999;
+        if (orderA !== orderB) return orderA - orderB;
+        return (a.name || "").localeCompare(b.name || "");
+      });
+      const activeCats = cats.filter(c => c.isActive !== false);
+      setDbCategories(activeCats);
+    });
+
+    // Products
+    const unsubProds = onSnapshot(collection(db, "products"), (snapshot) => {
+      const prods: any[] = [];
+      snapshot.forEach((doc) => {
+        prods.push({ id: doc.id, ...doc.data() });
+      });
+      setDbProducts(prods);
+    });
+
+    return () => {
+      unsubCats();
+      unsubProds();
+    };
+  }, []);
 
   // Account dropdown state
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
+
+  // Helper to count products dynamically for a category
+  const getProductCount = (categorySlugOrId: string) => {
+    if (!categorySlugOrId) return 0;
+    const cleanSlug = categorySlugOrId.toLowerCase().trim();
+    return dbProducts.filter((p) => {
+      const pCat = p.category?.toLowerCase()?.trim();
+      return pCat === cleanSlug;
+    }).length;
+  };
 
   // Mobile drawer state
   const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -103,13 +145,14 @@ export const Header: React.FC = () => {
     if (searchQuery.trim() === "") {
       setSearchResults([]);
     } else {
-      const filtered = SEARCH_PRODUCTS.filter((p) =>
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.category.toLowerCase().includes(searchQuery.toLowerCase())
+      const filtered = dbProducts.filter((p) =>
+        (p.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.category || "").toLowerCase().includes(searchQuery.toLowerCase())
       );
-      setSearchResults(filtered);
+      filtered.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      setSearchResults(filtered.slice(0, 5));
     }
-  }, [searchQuery]);
+  }, [searchQuery, dbProducts]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -198,7 +241,7 @@ export const Header: React.FC = () => {
                           onClick={() => handleSuggestionClick(p.slug)}
                           className="flex items-center gap-3 p-2 hover:bg-accent rounded-md cursor-pointer transition-colors"
                         >
-                          <img src={p.image} alt={p.name} className="w-10 h-10 object-cover rounded-md border border-zinc-100" />
+                          <img src={p.images?.[0] || p.image || "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=100&q=80"} alt={p.name} className="w-10 h-10 object-cover rounded-md border border-zinc-100" />
                           <div className="flex-1 text-sm font-medium text-dark truncate">{p.name}</div>
                           <div className="text-sm font-semibold text-secondary">₹{p.price}</div>
                         </div>
@@ -332,53 +375,36 @@ export const Header: React.FC = () => {
         )}
 
         {/* Desktop Mega Navigation Bar */}
-        <nav className="hidden lg:block border-t border-zinc-100 bg-white">
+        <nav className="hidden lg:block border-t border-zinc-100 bg-white relative">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <ul className="flex items-center justify-center gap-10 text-[16px] font-medium tracking-normal text-[#2b2b2b] py-3 bg-white">
 
-              {/* Shop by Category Mega Menu */}
+              {/* Shop by Category Dropdown */}
               <li className="group relative py-2 cursor-pointer">
                 <span className="flex items-center gap-1 hover:text-secondary transition-colors">
                   Shop by Category <ChevronDown size={12} className="text-zinc-400 group-hover:text-secondary transition-colors" />
                 </span>
-                {/* Mega Menu Drawer */}
-                <div className="absolute top-full left-1/2 -translate-x-1/2 w-[800px] bg-white border border-zinc-100 shadow-2xl rounded-b-lg p-6 grid grid-cols-4 gap-6 opacity-0 translate-y-3 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 z-50">
-                  <div className="col-span-1">
-                    <h4 className="font-serif text-secondary text-xs font-bold tracking-widest border-b border-zinc-100 pb-2 mb-3">Popular Categories</h4>
-                    <ul className="space-y-2 text-xs font-medium text-zinc-600 capitalize">
-                      <li><Link href="/collections?category=rings" className="hover:text-primary transition-colors">Rings</Link></li>
-                      <li><Link href="/collections?category=earrings" className="hover:text-primary transition-colors">Earrings</Link></li>
-                      <li><Link href="/collections?category=necklaces" className="hover:text-primary transition-colors">Necklaces</Link></li>
-                      <li><Link href="/collections?category=bracelets" className="hover:text-primary transition-colors">Bracelets</Link></li>
-                      <li><Link href="/collections?category=anklets" className="hover:text-primary transition-colors">Anklets</Link></li>
-                    </ul>
-                  </div>
-                  <div className="col-span-1">
-                    <h4 className="font-serif text-secondary text-xs font-bold tracking-widest border-b border-zinc-100 pb-2 mb-3">Speciality Products</h4>
-                    <ul className="space-y-2 text-xs font-medium text-zinc-600 capitalize">
-                      <li><Link href="/collections?category=pendants" className="hover:text-primary transition-colors">Pendants</Link></li>
-                      <li><Link href="/collections?category=toe-rings" className="hover:text-primary transition-colors">Toe Rings</Link></li>
-                      <li><Link href="/collections?category=kada" className="hover:text-primary transition-colors">Kada</Link></li>
-                    </ul>
-                  </div>
-                  <div className="col-span-1">
-                    <h4 className="font-serif text-secondary text-xs font-bold tracking-widest border-b border-zinc-100 pb-2 mb-3">Occasions</h4>
-                    <ul className="space-y-2 text-xs font-medium text-zinc-600 capitalize">
-                      <li><Link href="/collections?occasion=wedding" className="hover:text-primary transition-colors">Wedding Wear</Link></li>
-                      <li><Link href="/collections?occasion=festive" className="hover:text-primary transition-colors">Festive Wear</Link></li>
-                      <li><Link href="/collections?occasion=office" className="hover:text-primary transition-colors">Office Wear</Link></li>
-                      <li><Link href="/collections?occasion=party" className="hover:text-primary transition-colors">Party wear</Link></li>
-                    </ul>
-                  </div>
-                  <div className="col-span-1 bg-accent p-4 rounded-lg flex flex-col justify-between">
-                    <div>
-                      <h5 className="font-serif text-primary text-sm font-bold">Bridal Collection</h5>
-                      <p className="text-[10px] text-zinc-500 normal-case mt-1">Exquisite handcrafted silver masterworks styled for your special day.</p>
-                    </div>
-                    <Link href="/collections?occasion=wedding" className="text-secondary text-xs font-bold flex items-center gap-1 mt-4 hover:underline">
-                      Shop Now <ArrowRight size={12} />
-                    </Link>
-                  </div>
+                <div className="absolute top-full left-0 w-52 bg-white border border-zinc-100 shadow-xl rounded-b-lg p-3 opacity-0 translate-y-3 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 z-50">
+                  <ul className="space-y-2 text-xs font-semibold text-zinc-600">
+                    {dbCategories.length === 0 ? (
+                      <li className="p-2 text-zinc-400 italic text-center">No Categories Available</li>
+                    ) : (
+                      <>
+                        {dbCategories.map((cat) => (
+                          <li key={cat.id}>
+                            <Link href={`/collections/${cat.slug || cat.id}`} className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors capitalize">
+                              {cat.name}
+                            </Link>
+                          </li>
+                        ))}
+                        <li className="border-t border-zinc-100 mt-1 pt-1">
+                          <Link href="/collections" className="block p-2 text-secondary hover:bg-accent hover:text-primary rounded-md transition-colors font-bold uppercase tracking-wider text-[10px]">
+                            View All Categories
+                          </Link>
+                        </li>
+                      </>
+                    )}
+                  </ul>
                 </div>
               </li>
 
@@ -390,9 +416,13 @@ export const Header: React.FC = () => {
                 <div className="absolute top-full left-0 w-48 bg-white border border-zinc-100 shadow-xl rounded-b-lg p-3 opacity-0 translate-y-3 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 z-50">
                   <ul className="space-y-2 text-xs font-semibold text-zinc-600">
                     <li><Link href="/bestsellers" className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">All Bestsellers</Link></li>
-                    <li><Link href="/collections?category=rings&sort=bestseller" className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">Bestselling Rings</Link></li>
-                    <li><Link href="/collections?category=earrings&sort=bestseller" className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">Bestselling Earrings</Link></li>
-                    <li><Link href="/collections?category=necklaces&sort=bestseller" className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">Bestselling Necklaces</Link></li>
+                    {dbCategories.slice(0, 3).map((cat) => (
+                      <li key={cat.id}>
+                        <Link href={`/collections/${cat.slug || cat.id}?sort=bestseller`} className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">
+                          Bestselling {cat.name}
+                        </Link>
+                      </li>
+                    ))}
                   </ul>
                 </div>
               </li>
@@ -426,9 +456,13 @@ export const Header: React.FC = () => {
                 </span>
                 <div className="absolute top-full left-0 w-48 bg-white border border-zinc-100 shadow-xl rounded-b-lg p-3 opacity-0 translate-y-3 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 z-50">
                   <ul className="space-y-2 text-xs font-semibold text-zinc-600">
-                    <li><Link href="/collections?gender=men&category=rings" className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">Men Rings</Link></li>
-                    <li><Link href="/collections?gender=men&category=kada" className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">Men Kada</Link></li>
-                    <li><Link href="/collections?gender=men&category=necklaces" className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">Men Chains</Link></li>
+                    {dbCategories.slice(0, 5).map((cat) => (
+                      <li key={cat.id}>
+                        <Link href={`/collections/${cat.slug || cat.id}?gender=men`} className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">
+                          Men {cat.name}
+                        </Link>
+                      </li>
+                    ))}
                   </ul>
                 </div>
               </li>
@@ -440,9 +474,13 @@ export const Header: React.FC = () => {
                 </span>
                 <div className="absolute top-full left-0 w-48 bg-white border border-zinc-100 shadow-xl rounded-b-lg p-3 opacity-0 translate-y-3 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 z-50">
                   <ul className="space-y-2 text-xs font-semibold text-zinc-600">
-                    <li><Link href="/collections?gender=kids&category=earrings" className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">Kids Earrings</Link></li>
-                    <li><Link href="/collections?gender=kids&category=bracelets" className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">Kids Bracelets</Link></li>
-                    <li><Link href="/collections?gender=kids&category=pendants" className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">Kids Pendants</Link></li>
+                    {dbCategories.slice(0, 5).map((cat) => (
+                      <li key={cat.id}>
+                        <Link href={`/collections/${cat.slug || cat.id}?gender=kids`} className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">
+                          Kids {cat.name}
+                        </Link>
+                      </li>
+                    ))}
                   </ul>
                 </div>
               </li>
@@ -508,16 +546,32 @@ export const Header: React.FC = () => {
                     <ChevronDown size={16} className={`transform transition-transform text-zinc-400 ${mobileActiveAccordion === "category" ? "rotate-180" : ""}`} />
                   </button>
                   {mobileActiveAccordion === "category" && (
-                    <div className="pl-4 mt-1 space-y-1 text-sm font-normal text-zinc-500 capitalize">
-                      <Link href="/collections?category=rings" className="block py-1.5 hover:text-secondary transition-colors">Rings</Link>
-                      <Link href="/collections?category=earrings" className="block py-1.5 hover:text-secondary transition-colors">Earrings</Link>
-                      <Link href="/collections?category=necklaces" className="block py-1.5 hover:text-secondary transition-colors">Necklaces</Link>
-                      <Link href="/collections?category=bracelets" className="block py-1.5 hover:text-secondary transition-colors">Bracelets</Link>
-                      <Link href="/collections?category=anklets" className="block py-1.5 hover:text-secondary transition-colors">Anklets</Link>
-                      <Link href="/collections?category=pendants" className="block py-1.5 hover:text-secondary transition-colors">Pendants</Link>
-                      <Link href="/collections?category=toe-rings" className="block py-1.5 hover:text-secondary transition-colors">Toe Rings</Link>
-                      <Link href="/collections?category=kada" className="block py-1.5 hover:text-secondary transition-colors">Kada</Link>
-                      <Link href="/collections?category=gift-sets" className="block py-1.5 hover:text-secondary transition-colors">Gift Sets</Link>
+                    <div className="pl-2 mt-2 space-y-2.5">
+                      {dbCategories.length === 0 ? (
+                        <div className="text-xs text-zinc-400 italic py-2">No Categories Available</div>
+                      ) : (
+                        dbCategories.map((cat) => {
+                          const productCount = getProductCount(cat.slug || cat.id);
+                          return (
+                            <Link 
+                              key={cat.id} 
+                              href={`/collections/${cat.slug || cat.id}`} 
+                              className="flex items-center gap-3 p-2 hover:bg-accent rounded-xl border border-zinc-100/50 hover:border-secondary/20 transition-all"
+                            >
+                              <img 
+                                src={cat.imageUrl || cat.image || "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=100&q=80"} 
+                                alt={cat.name} 
+                                className="w-10 h-10 object-cover rounded-lg border border-zinc-150" 
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-bold text-primary uppercase tracking-wide truncate">{cat.name}</div>
+                                <div className="text-[9px] text-zinc-400 font-semibold mt-0.5">{productCount} Items</div>
+                              </div>
+                              <ArrowRight size={12} className="text-zinc-400 animate-pulse" />
+                            </Link>
+                          );
+                        })
+                      )}
                     </div>
                   )}
                 </div>
@@ -533,16 +587,18 @@ export const Header: React.FC = () => {
                   </button>
                   {mobileActiveAccordion === "bestseller" && (
                     <div className="pl-4 mt-1 space-y-1 text-sm font-normal text-zinc-500">
-                      <Link href="/bestsellers" className="block py-1.5 hover:text-secondary transition-colors">All Bestsellers</Link>
-                      <Link href="/collections?category=rings&sort=bestseller" className="block py-1.5 hover:text-secondary transition-colors">Bestselling Rings</Link>
-                      <Link href="/collections?category=earrings&sort=bestseller" className="block py-1.5 hover:text-secondary transition-colors">Bestselling Earrings</Link>
-                      <Link href="/collections?category=necklaces&sort=bestseller" className="block py-1.5 hover:text-secondary transition-colors">Bestselling Necklaces</Link>
+                      <Link href="/bestsellers" className="block py-1.5 hover:text-secondary transition-colors font-medium">All Bestsellers</Link>
+                      {dbCategories.slice(0, 3).map((cat) => (
+                        <Link key={cat.id} href={`/collections/${cat.slug || cat.id}?sort=bestseller`} className="block py-1.5 hover:text-secondary transition-colors font-medium capitalize">
+                          Bestselling {cat.name}
+                        </Link>
+                      ))}
                     </div>
                   )}
                 </div>
 
                 {/* New Arrival */}
-                <Link href="/new-arrivals" className="block py-2 hover:text-secondary transition-colors">New Arrival</Link>
+                <Link href="/new-arrivals" className="block py-2 hover:text-secondary transition-colors font-medium">New Arrival</Link>
 
                 {/* Shop By Women Accordion */}
                 <div>
@@ -574,9 +630,11 @@ export const Header: React.FC = () => {
                   </button>
                   {mobileActiveAccordion === "men" && (
                     <div className="pl-4 mt-1 space-y-1 text-sm font-normal text-zinc-500">
-                      <Link href="/collections?gender=men&category=rings" className="block py-1.5 hover:text-secondary transition-colors">Men Rings</Link>
-                      <Link href="/collections?gender=men&category=kada" className="block py-1.5 hover:text-secondary transition-colors">Men Kada</Link>
-                      <Link href="/collections?gender=men&category=necklaces" className="block py-1.5 hover:text-secondary transition-colors">Men Chains</Link>
+                      {dbCategories.slice(0, 5).map((cat) => (
+                        <Link key={cat.id} href={`/collections/${cat.slug || cat.id}?gender=men`} className="block py-1.5 hover:text-secondary transition-colors font-medium capitalize">
+                          Men {cat.name}
+                        </Link>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -592,9 +650,11 @@ export const Header: React.FC = () => {
                   </button>
                   {mobileActiveAccordion === "kids" && (
                     <div className="pl-4 mt-1 space-y-1 text-sm font-normal text-zinc-500">
-                      <Link href="/collections?gender=kids&category=earrings" className="block py-1.5 hover:text-secondary transition-colors">Kids Earrings</Link>
-                      <Link href="/collections?gender=kids&category=bracelets" className="block py-1.5 hover:text-secondary transition-colors">Kids Bracelets</Link>
-                      <Link href="/collections?gender=kids&category=pendants" className="block py-1.5 hover:text-secondary transition-colors">Kids Pendants</Link>
+                      {dbCategories.slice(0, 5).map((cat) => (
+                        <Link key={cat.id} href={`/collections/${cat.slug || cat.id}?gender=kids`} className="block py-1.5 hover:text-secondary transition-colors font-medium capitalize">
+                          Kids {cat.name}
+                        </Link>
+                      ))}
                     </div>
                   )}
                 </div>

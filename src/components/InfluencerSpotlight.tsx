@@ -33,16 +33,38 @@ export const InfluencerSpotlight: React.FC = () => {
   useEffect(() => {
     const q = query(
       collection(db, "influencerReels"),
-      where("isActive", "==", true)
+      where("isActive", "==", true),
+      orderBy("createdAt", "desc")
     );
+
+    const getReelTime = (val: any) => {
+      if (!val) return 0;
+      if (val.seconds) return val.seconds * 1000;
+      const t = new Date(val).getTime();
+      return isNaN(t) ? 0 : t;
+    };
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data: any[] = [];
       snapshot.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
-      // Sort in memory to avoid composite index requirement (fallback)
-      data.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
       setReels(data);
       setIsLoading(false);
+    }, (error) => {
+      console.warn("Firestore query with orderBy failed (index might be building). Falling back to client-side sorting.", error);
+
+      const fallbackQ = query(
+        collection(db, "influencerReels"),
+        where("isActive", "==", true)
+      );
+
+      onSnapshot(fallbackQ, (snapshot) => {
+        const data: any[] = [];
+        snapshot.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
+        // Sort in memory: newest first (createdAt descending)
+        data.sort((a, b) => getReelTime(b.createdAt) - getReelTime(a.createdAt));
+        setReels(data);
+        setIsLoading(false);
+      });
     });
 
     return () => unsubscribe();

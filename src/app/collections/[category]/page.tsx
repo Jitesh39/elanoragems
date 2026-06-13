@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, Suspense, use } from "react";
 import { useSearchParams } from "next/navigation";
-import { Filter, SlidersHorizontal, ArrowUpDown } from "lucide-react";
+import { Filter, ArrowUpDown } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { CartDrawer } from "@/components/CartDrawer";
@@ -10,22 +10,36 @@ import { ProductCard } from "@/components/ProductCard";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
-function CollectionsContent() {
+interface PageProps {
+  params: Promise<{ category: string }>;
+}
+
+function CategoryCollectionsContent({ params }: PageProps) {
+  const resolvedParams = use(params);
+  const categoryFilter = resolvedParams.category;
   const searchParams = useSearchParams();
 
   // Active filters from URL query
-  const categoryFilter = searchParams.get("category");
   const colorFilter = searchParams.get("color");
   const genderFilter = searchParams.get("gender");
   const occasionFilter = searchParams.get("occasion");
   const priceFilter = searchParams.get("price");
   const searchQuery = searchParams.get("search");
+  const sortOptionParam = searchParams.get("sort") || "default";
 
   // Local state
   const [products, setProducts] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [sortedProducts, setSortedProducts] = useState<any[]>([]);
-  const [sortOption, setSortOption] = useState("default");
+  const [sortOption, setSortOption] = useState(sortOptionParam);
   const [loading, setLoading] = useState(true);
+
+  // Sync sortOption state if query param changes
+  useEffect(() => {
+    if (sortOptionParam) {
+      setSortOption(sortOptionParam);
+    }
+  }, [sortOptionParam]);
 
   // Fetch products from Firestore
   useEffect(() => {
@@ -41,14 +55,36 @@ function CollectionsContent() {
     return () => unsubscribe();
   }, []);
 
+  // Fetch categories to get exact display name
+  useEffect(() => {
+    const categoriesRef = collection(db, "categories");
+    const unsubscribe = onSnapshot(categoriesRef, (snapshot) => {
+      const cats: any[] = [];
+      snapshot.forEach((doc) => {
+        cats.push({ id: doc.id, ...doc.data() });
+      });
+      setCategories(cats);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const currentCategoryDoc = categories.find(
+    (c) => c.slug?.toLowerCase() === categoryFilter.toLowerCase() || c.id?.toLowerCase() === categoryFilter.toLowerCase()
+  );
+  const categoryDisplayName = currentCategoryDoc ? currentCategoryDoc.name : categoryFilter;
+
   // Filter and Sort
   useEffect(() => {
     if (loading) return;
     let filtered = [...products];
 
-    // 1. Filter by category
+    // 1. Filter by category (from dynamic slug parameter)
     if (categoryFilter) {
-      filtered = filtered.filter((p) => p.category?.toLowerCase() === categoryFilter.toLowerCase());
+      filtered = filtered.filter(
+        (p) =>
+          p.category?.toLowerCase() === categoryFilter.toLowerCase() ||
+          p.category?.toLowerCase() === currentCategoryDoc?.id?.toLowerCase()
+      );
     }
 
     // 2. Filter by metal color
@@ -95,12 +131,15 @@ function CollectionsContent() {
       filtered.sort((a, b) => b.price - a.price);
     } else if (sortOption === "rating") {
       filtered.sort((a, b) => (b.rating || 5.0) - (a.rating || 5.0));
+    } else if (sortOption === "bestseller") {
+      filtered = filtered.filter((p) => p.isBestseller === true);
+      filtered.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     } else {
       filtered.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     }
 
     setSortedProducts(filtered);
-  }, [products, categoryFilter, colorFilter, genderFilter, occasionFilter, priceFilter, searchQuery, sortOption, loading]);
+  }, [products, categoryFilter, currentCategoryDoc, colorFilter, genderFilter, occasionFilter, priceFilter, searchQuery, sortOption, loading]);
 
   if (loading) {
     return (
@@ -117,15 +156,14 @@ function CollectionsContent() {
       <div className="border-b border-zinc-200 pb-5 mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between justify-center gap-4">
         <div>
           <span className="text-secondary text-xs font-bold uppercase tracking-widest">
-            {categoryFilter || colorFilter || genderFilter || occasionFilter || "Collections"} Catalogue
+            {categoryDisplayName} Catalogue
           </span>
           <h1 className="font-serif text-3xl font-bold text-primary mt-1 capitalize">
-            {categoryFilter && `${categoryFilter} Collection`}
-            {colorFilter && `${colorFilter.replace("-", " ")} Collection`}
-            {genderFilter && `${genderFilter} Collection`}
-            {occasionFilter && `${occasionFilter} Collection`}
-            {searchQuery && `Results for &quot;${searchQuery}&quot;`}
-            {!categoryFilter && !colorFilter && !genderFilter && !occasionFilter && !searchQuery && "All Ornaments"}
+            {categoryDisplayName} Collection
+            {colorFilter && ` - ${colorFilter.replace("-", " ")}`}
+            {genderFilter && ` - ${genderFilter}`}
+            {occasionFilter && ` - ${occasionFilter}`}
+            {searchQuery && ` - Results for "${searchQuery}"`}
           </h1>
         </div>
 
@@ -139,6 +177,7 @@ function CollectionsContent() {
             className="outline-none bg-transparent cursor-pointer font-bold text-primary"
           >
             <option value="default">Featured</option>
+            <option value="bestseller">Bestseller First</option>
             <option value="price-low">Price: Low to High</option>
             <option value="price-high">Price: High to Low</option>
             <option value="rating">Top Rated</option>
@@ -164,7 +203,7 @@ function CollectionsContent() {
   );
 }
 
-export default function CollectionsPage() {
+export default function CategoryCollectionsPage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-white flex flex-col justify-between">
       <Header />
@@ -174,7 +213,7 @@ export default function CollectionsPage() {
           <p className="font-serif text-sm font-semibold tracking-widest text-zinc-500 uppercase">Loading Ornaments...</p>
         </div>
       }>
-        <CollectionsContent />
+        <CategoryCollectionsContent params={params} />
       </Suspense>
       <Footer />
       <CartDrawer />
