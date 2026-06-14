@@ -97,7 +97,7 @@ export const Footer: React.FC = () => {
           </div>
           <div className="flex gap-2 text-xs text-zinc-300">
             <Phone size={16} className="text-secondary flex-shrink-0" />
-            <span>+91 95</span>
+            <span>+91 950781</span>
           </div>
           <div className="flex gap-2 text-xs text-zinc-300">
             <Mail size={16} className="text-secondary flex-shrink-0" />
