@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { doc, getDoc, setDoc, collection, query, where, getDocs, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, query, where, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import nodemailer from "nodemailer";
+import { createNotification, checkAndCreateStockAlert } from "@/lib/notifications";
 
 function generateConfirmationEmailHtml(orderNumber: string, orderData: any) {
   const itemsRows = orderData.products.map((item: any) => `
@@ -285,6 +286,38 @@ export async function POST(req: NextRequest) {
     };
 
     await setDoc(doc(db, "orders", orderNumber), finalOrderObject);
+
+    // Decrement product stock and trigger inventory alerts
+    if (finalOrderObject.products && Array.isArray(finalOrderObject.products)) {
+      for (const item of finalOrderObject.products) {
+        try {
+          const productRef = doc(db, "products", item.productId);
+          const productSnap = await getDoc(productRef);
+          if (productSnap.exists()) {
+            const currentStock = Number(productSnap.data().stock) || 0;
+            const newStock = Math.max(0, currentStock - (Number(item.quantity) || 0));
+            await updateDoc(productRef, { stock: newStock });
+            
+            // Check and trigger Low Stock or Out of Stock notifications
+            await checkAndCreateStockAlert(item.productId, productSnap.data().name, newStock);
+          }
+        } catch (stockErr) {
+          console.error(`Failed to update stock for product ${item.productId}:`, stockErr);
+        }
+      }
+    }
+
+    // Trigger NEW ORDER notification
+    try {
+      await createNotification({
+        type: "order",
+        title: `New Order #${orderNumber}`,
+        message: `${finalOrderObject.customerName} placed an order for ₹${finalOrderObject.totalAmount.toLocaleString("en-IN")}.`,
+        referenceId: orderNumber
+      });
+    } catch (notifErr) {
+      console.error("Failed to create order notification:", notifErr);
+    }
 
     // 8. Send order confirmation email
     const cleanEmail = customerEmail;

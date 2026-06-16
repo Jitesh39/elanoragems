@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AdminRoute } from "@/components/AdminRoute";
 import { useAuth } from "@/context/AuthContext";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import {
   LayoutDashboard,
   PackageSearch,
@@ -30,8 +32,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
+
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const q = query(collection(db, "notifications"), where("isRead", "==", false));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setUnreadCount(snapshot.size);
+    });
+    return () => unsubscribe();
   }, []);
   const navigation = [
     { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -142,10 +154,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             {/* Right Side Header Items */}
             <div className="flex items-center gap-6">
-              <button className="relative p-2 text-zinc-400 hover:text-[#0F2F6B] transition-colors rounded-full hover:bg-zinc-50">
+              <Link 
+                href="/admin/notifications"
+                className="relative p-2 text-zinc-400 hover:text-[#0F2F6B] transition-colors rounded-full hover:bg-zinc-50 animate-pulse-subtle"
+              >
                 <Bell size={20} />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-              </button>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white px-1">
+                    {unreadCount}
+                  </span>
+                )}
+              </Link>
 
               <div className="h-8 w-px bg-zinc-200 hidden sm:block"></div>
 

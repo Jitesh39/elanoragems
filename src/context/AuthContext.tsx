@@ -13,6 +13,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+import { createNotification } from "@/lib/notifications";
 
 export interface Address {
   id: string;
@@ -91,6 +92,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log("Writing collection: users");
         console.log("UID:", firebaseUser.uid);
         await setDoc(userRefDoc, newProfile);
+        if (newProfile.role === "customer") {
+          try {
+            await createNotification({
+              type: "user",
+              title: "New User Registration",
+              message: `${newProfile.displayName} just created an account.`,
+              referenceId: newProfile.email || newProfile.uid
+            });
+          } catch (notifErr) {
+            console.error("Failed to create user registration notification:", notifErr);
+          }
+        }
         setUser(newProfile);
         return newProfile;
       }
@@ -165,6 +178,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log("Writing collection: users");
       console.log("UID:", userCredential.user.uid);
       await setDoc(doc(db, "users", userCredential.user.uid), newProfile);
+      if (newProfile.role === "customer") {
+        try {
+          await createNotification({
+            type: "user",
+            title: "New User Registration",
+            message: `${newProfile.displayName} just created an account.`,
+            referenceId: newProfile.email || newProfile.uid
+          });
+        } catch (notifErr) {
+          console.error("Failed to create user registration notification:", notifErr);
+        }
+      }
       setUser(newProfile);
       setLoading(false);
       return newProfile;

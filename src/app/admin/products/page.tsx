@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { collection, onSnapshot, deleteDoc, doc, addDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { checkAndCreateStockAlert } from "@/lib/notifications";
 import { Plus, Edit, Trash2, Search, Filter, X, Loader2, Image as ImageIcon } from "lucide-react";
 
 export default function ManageProductsPage() {
@@ -76,6 +77,20 @@ export default function ManageProductsPage() {
       unsubProds();
     };
   }, []);
+
+  // Auto-open product edit modal if productId/edit is in URL parameters
+  useEffect(() => {
+    if (products.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const editProductId = params.get("productId") || params.get("edit");
+      if (editProductId) {
+        const found = products.find(p => p.id === editProductId);
+        if (found) {
+          handleEditClick(found);
+        }
+      }
+    }
+  }, [products]);
 
   const uploadFile = async (file: File): Promise<{ url: string; publicId: string }> => {
     const formData = new FormData();
@@ -272,11 +287,13 @@ export default function ManageProductsPage() {
 
       if (editingId) {
         await updateDoc(doc(db, "products", editingId), productData);
+        await checkAndCreateStockAlert(editingId, name, Number(stock));
       } else {
         const docRef = await addDoc(collection(db, "products"), {
           ...productData,
           createdAt: new Date().toISOString()
         });
+        await checkAndCreateStockAlert(docRef.id, name, Number(stock));
 
         // Trigger email notification to all active subscribers after successful database save
         try {

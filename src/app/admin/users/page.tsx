@@ -24,6 +24,15 @@ export default function UsersPage() {
     return () => unsubscribe();
   }, []);
 
+  // Pre-populate search query if 'search' query parameter is present in URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const searchParam = params.get("search");
+    if (searchParam) {
+      setSearchTerm(searchParam);
+    }
+  }, []);
+
   const filteredUsers = users.filter(u => 
     (u.name || "").toLowerCase().includes(searchTerm.toLowerCase()) || 
     (u.email || "").toLowerCase().includes(searchTerm.toLowerCase())
