@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ShoppingBag, Trash2, Plus, Minus, ArrowRight, Tag, Truck } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useCart } from "@/context/CartContext";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function CartPage() {
   const router = useRouter();
@@ -17,12 +19,32 @@ export default function CartPage() {
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [couponError, setCouponError] = useState("");
 
-  const SHIPPING_THRESHOLD = 999;
-  const SHIPPING_COST = 99;
+  const [deliveryConfig, setDeliveryConfig] = useState({
+    shippingFee: 99,
+    codCharge: 49,
+    freeDeliveryThreshold: 999,
+    enableCOD: true,
+    enableFreeShipping: true,
+    deliveryMessage: "Free shipping on orders above ₹999"
+  });
 
-  const progressPercent = Math.min((cartSubtotal / SHIPPING_THRESHOLD) * 100, 100);
-  const remainingForFreeShipping = SHIPPING_THRESHOLD - cartSubtotal;
-  const shippingFee = cartSubtotal >= SHIPPING_THRESHOLD || cartSubtotal === 0 ? 0 : SHIPPING_COST;
+  useEffect(() => {
+    const deliveryRef = doc(db, "settings", "store");
+    const unsubscribe = onSnapshot(deliveryRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setDeliveryConfig({
+          shippingFee: data.shippingFee !== undefined ? Number(data.shippingFee) : 99,
+          codCharge: data.codCharge !== undefined ? Number(data.codCharge) : 49,
+          freeDeliveryThreshold: data.freeDeliveryThreshold !== undefined ? Number(data.freeDeliveryThreshold) : 999,
+          enableCOD: data.enableCOD !== undefined ? Boolean(data.enableCOD) : true,
+          enableFreeShipping: data.enableFreeShipping !== undefined ? Boolean(data.enableFreeShipping) : true,
+          deliveryMessage: data.deliveryMessage !== undefined ? String(data.deliveryMessage) : "Free shipping on orders above ₹999",
+        });
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +58,12 @@ export default function CartPage() {
   };
 
   const discountAmount = appliedCoupon ? Math.round(cartSubtotal * 0.10) : 0;
+
+  const isFreeShippingEligible = deliveryConfig.enableFreeShipping && (cartSubtotal - discountAmount) >= deliveryConfig.freeDeliveryThreshold;
+  const shippingFee = cartSubtotal === 0 ? 0 : (isFreeShippingEligible ? 0 : deliveryConfig.shippingFee);
+  const remainingForFreeShipping = deliveryConfig.freeDeliveryThreshold - (cartSubtotal - discountAmount);
+  const progressPercent = Math.min(((cartSubtotal - discountAmount) / deliveryConfig.freeDeliveryThreshold) * 100, 100);
+
   const finalTotal = cartSubtotal - discountAmount + shippingFee;
 
   const handleCheckoutRedirect = () => {
@@ -70,9 +98,9 @@ export default function CartPage() {
                 <div className="flex items-center gap-2 text-xs font-semibold text-primary mb-2">
                   <Truck size={16} className="text-secondary" />
                   {remainingForFreeShipping > 0 ? (
-                    <span>Add <span className="text-secondary">₹{remainingForFreeShipping}</span> more to qualify for <span className="underline">FREE Shipping</span>!</span>
+                    <span>Add <span className="text-secondary">₹{remainingForFreeShipping}</span> more for FREE Shipping</span>
                   ) : (
-                    <span className="text-green-700">Congratulations! You qualify for FREE Shipping. 🚚</span>
+                    <span className="text-green-700 font-bold">✅ You qualify for FREE Shipping</span>
                   )}
                 </div>
                 <div className="w-full bg-zinc-100 h-2 rounded-full overflow-hidden">

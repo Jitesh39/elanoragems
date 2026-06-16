@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/navigation";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Trash2, Plus, Minus, ShoppingBag, Truck, Tag } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export const CartDrawer: React.FC = () => {
   const router = useRouter();
@@ -24,13 +26,40 @@ export const CartDrawer: React.FC = () => {
   const [discountAmount, setDiscountAmount] = useState(0);
   const [couponError, setCouponError] = useState("");
 
-  const SHIPPING_THRESHOLD = 999;
-  const SHIPPING_COST = 99;
+  const [deliveryConfig, setDeliveryConfig] = useState({
+    shippingFee: 99,
+    codCharge: 49,
+    freeDeliveryThreshold: 999,
+    enableCOD: true,
+    enableFreeShipping: true,
+    deliveryMessage: "Free shipping on orders above ₹999"
+  });
+
+  useEffect(() => {
+    const deliveryRef = doc(db, "settings", "store");
+    const unsubscribe = onSnapshot(deliveryRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setDeliveryConfig({
+          shippingFee: data.shippingFee !== undefined ? Number(data.shippingFee) : 99,
+          codCharge: data.codCharge !== undefined ? Number(data.codCharge) : 49,
+          freeDeliveryThreshold: data.freeDeliveryThreshold !== undefined ? Number(data.freeDeliveryThreshold) : 999,
+          enableCOD: data.enableCOD !== undefined ? Boolean(data.enableCOD) : true,
+          enableFreeShipping: data.enableFreeShipping !== undefined ? Boolean(data.enableFreeShipping) : true,
+          deliveryMessage: data.deliveryMessage !== undefined ? String(data.deliveryMessage) : "Free shipping on orders above ₹999",
+        });
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const currentDiscount = appliedCoupon ? (appliedCoupon === "ELANORA10" || appliedCoupon === "SHIMMER10" ? Math.round(cartSubtotal * 0.10) : 50) : 0;
 
   // Free shipping calculations
-  const progressPercent = Math.min((cartSubtotal / SHIPPING_THRESHOLD) * 100, 100);
-  const remainingForFreeShipping = SHIPPING_THRESHOLD - cartSubtotal;
-  const shippingFee = cartSubtotal >= SHIPPING_THRESHOLD || cartSubtotal === 0 ? 0 : SHIPPING_COST;
+  const isFreeShippingEligible = deliveryConfig.enableFreeShipping && (cartSubtotal - currentDiscount) >= deliveryConfig.freeDeliveryThreshold;
+  const shippingFee = cartSubtotal === 0 ? 0 : (isFreeShippingEligible ? 0 : deliveryConfig.shippingFee);
+  const remainingForFreeShipping = deliveryConfig.freeDeliveryThreshold - (cartSubtotal - currentDiscount);
+  const progressPercent = Math.min(((cartSubtotal - currentDiscount) / deliveryConfig.freeDeliveryThreshold) * 100, 100);
 
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,8 +90,6 @@ export const CartDrawer: React.FC = () => {
     setCouponCode("");
   };
 
-  // Recalculating discount if items change
-  const currentDiscount = appliedCoupon ? (appliedCoupon === "ELANORA10" || appliedCoupon === "SHIMMER10" ? Math.round(cartSubtotal * 0.10) : 50) : 0;
   const finalTotal = cartSubtotal - currentDiscount + shippingFee;
 
   const handleCheckoutRedirect = () => {
@@ -118,10 +145,10 @@ export const CartDrawer: React.FC = () => {
                   <Truck size={16} className="text-secondary" />
                   {remainingForFreeShipping > 0 ? (
                     <span>
-                      Add <span className="text-secondary">₹{remainingForFreeShipping}</span> more for <span className="underline">FREE Shipping</span>!
+                      Add <span className="text-secondary">₹{remainingForFreeShipping}</span> more for FREE Shipping
                     </span>
                   ) : (
-                    <span className="text-green-700">Congratulations! You qualify for FREE Shipping. 🚚</span>
+                    <span className="text-green-700 font-bold">✅ You qualify for FREE Shipping</span>
                   )}
                 </div>
                 <div className="w-full bg-zinc-200 h-2 rounded-full overflow-hidden">
@@ -283,7 +310,7 @@ export const CartDrawer: React.FC = () => {
                 >
                   Proceed To Checkout
                 </button>
-                <p className="text-[10px] text-center text-zinc-400 mt-2">Prices include GST. Fast delivery in 3-5 business days.</p>
+                <p className="text-[10px] text-center text-zinc-400 mt-2">Fast delivery in 3-5 business days.</p>
               </div>
             )}
           </motion.div>

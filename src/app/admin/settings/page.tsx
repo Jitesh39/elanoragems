@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Save, Store, Mail, Phone, MapPin, Link as LinkIcon, Search, LayoutTemplate, FileText } from "lucide-react";
+import { Save, Store, Mail, Phone, MapPin, Link as LinkIcon, Search, LayoutTemplate, FileText, CreditCard, Truck } from "lucide-react";
 import { HeroSectionManager } from "@/components/admin/HeroSectionManager";
 import { InfluencerManager } from "@/components/admin/InfluencerManager";
 import { CustomerTestimonialsManager } from "@/components/admin/CustomerTestimonialsManager";
@@ -13,7 +13,7 @@ import { PoliciesManager } from "@/components/admin/PoliciesManager";
 function SettingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<"store" | "site" | "policies">("store");
+  const [activeTab, setActiveTab] = useState<"store" | "site" | "policies" | "payment">("store");
 
   const [settings, setSettings] = useState({
     storeName: "ElanoraGems",
@@ -27,6 +27,19 @@ function SettingsContent() {
     seoTitle: "ElanoraGems | Luxury Handcrafted Jewelry",
     seoDescription: "Discover timeless elegance with ElanoraGems. Shop our exclusive collection of rings, necklaces, and earrings."
   });
+  const [paymentSettings, setPaymentSettings] = useState({
+    razorpayKeyId: "",
+    razorpayKeySecret: "",
+    razorpayEnabled: false
+  });
+  const [deliverySettings, setDeliverySettings] = useState({
+    shippingFee: 99,
+    codCharge: 49,
+    freeDeliveryThreshold: 999,
+    enableCOD: true,
+    enableFreeShipping: true,
+    deliveryMessage: "Free shipping on orders above ₹999"
+  });
   const [isSaving, setIsSaving] = useState(false);
 
   // Sync tab with URL queries if available (e.g. ?tab=policies)
@@ -36,12 +49,14 @@ function SettingsContent() {
       setActiveTab("policies");
     } else if (tabParam === "site") {
       setActiveTab("site");
+    } else if (tabParam === "payment") {
+      setActiveTab("payment");
     } else {
       setActiveTab("store");
     }
   }, [searchParams]);
 
-  const handleTabChange = (tab: "store" | "site" | "policies") => {
+  const handleTabChange = (tab: "store" | "site" | "policies" | "payment") => {
     setActiveTab(tab);
     // Update URL search params without triggering full reload
     const params = new URLSearchParams(window.location.search);
@@ -57,7 +72,38 @@ function SettingsContent() {
       }
     });
 
-    return () => unsubscribe();
+    const paymentRef = doc(db, "payment_settings", "config");
+    const unsubscribePayment = onSnapshot(paymentRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setPaymentSettings({
+          razorpayKeyId: data.razorpayKeyId || "",
+          razorpayKeySecret: data.razorpayKeySecret || "",
+          razorpayEnabled: data.razorpayEnabled || false
+        });
+      }
+    });
+
+    const deliveryRef = doc(db, "settings", "store");
+    const unsubscribeDelivery = onSnapshot(deliveryRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setDeliverySettings({
+          shippingFee: data.shippingFee !== undefined ? Number(data.shippingFee) : 99,
+          codCharge: data.codCharge !== undefined ? Number(data.codCharge) : 49,
+          freeDeliveryThreshold: data.freeDeliveryThreshold !== undefined ? Number(data.freeDeliveryThreshold) : 999,
+          enableCOD: data.enableCOD !== undefined ? Boolean(data.enableCOD) : true,
+          enableFreeShipping: data.enableFreeShipping !== undefined ? Boolean(data.enableFreeShipping) : true,
+          deliveryMessage: data.deliveryMessage !== undefined ? String(data.deliveryMessage) : "Free shipping on orders above ₹999",
+        });
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribePayment();
+      unsubscribeDelivery();
+    };
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -86,10 +132,39 @@ function SettingsContent() {
     setIsSaving(true);
     try {
       await setDoc(doc(db, "settings", "storeConfig"), settings, { merge: true });
+      await setDoc(doc(db, "settings", "store"), {
+        shippingFee: Number(deliverySettings.shippingFee),
+        codCharge: Number(deliverySettings.codCharge),
+        freeDeliveryThreshold: Number(deliverySettings.freeDeliveryThreshold),
+        enableCOD: Boolean(deliverySettings.enableCOD),
+        enableFreeShipping: Boolean(deliverySettings.enableFreeShipping),
+        deliveryMessage: String(deliverySettings.deliveryMessage)
+      }, { merge: true });
       alert("Settings saved successfully!");
     } catch (error) {
       console.error("Error saving settings:", error);
       alert("Failed to save settings.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSavePaymentSettings = async () => {
+    setIsSaving(true);
+    try {
+      // 1. Save sensitive details to payment_settings/config
+      await setDoc(doc(db, "payment_settings", "config"), paymentSettings, { merge: true });
+
+      // 2. Save public credentials to settings/storeConfig
+      await setDoc(doc(db, "settings", "storeConfig"), {
+        razorpayKeyId: paymentSettings.razorpayKeyId,
+        razorpayEnabled: paymentSettings.razorpayEnabled
+      }, { merge: true });
+
+      alert("Payment settings saved successfully!");
+    } catch (error) {
+      console.error("Error saving payment settings:", error);
+      alert("Failed to save payment settings.");
     } finally {
       setIsSaving(false);
     }
@@ -112,27 +187,44 @@ function SettingsContent() {
             {isSaving ? "Saving..." : "Save Store Settings"}
           </button>
         )}
+        {activeTab === "payment" && (
+          <button
+            onClick={handleSavePaymentSettings}
+            disabled={isSaving}
+            className="bg-[#0F2F6B] text-white px-5 py-2.5 rounded-xl font-semibold flex items-center gap-2 hover:bg-blue-900 transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
+          >
+            <Save size={20} className="text-[#D4AF37]" />
+            {isSaving ? "Saving..." : "Save Payment Settings"}
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-zinc-200">
+      <div className="flex border-b border-zinc-200 overflow-x-auto">
         <button
           onClick={() => handleTabChange("store")}
-          className={`px-6 py-3 font-bold text-sm border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${activeTab === "store" ? "border-[#0F2F6B] text-[#0F2F6B]" : "border-transparent text-zinc-500 hover:text-zinc-700"
+          className={`px-6 py-3 font-bold text-sm border-b-2 transition-colors flex items-center gap-2 cursor-pointer whitespace-nowrap ${activeTab === "store" ? "border-[#0F2F6B] text-[#0F2F6B]" : "border-transparent text-zinc-500 hover:text-zinc-700"
             }`}
         >
           <Store size={18} /> Store Settings
         </button>
         <button
           onClick={() => handleTabChange("site")}
-          className={`px-6 py-3 font-bold text-sm border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${activeTab === "site" ? "border-[#0F2F6B] text-[#0F2F6B]" : "border-transparent text-zinc-500 hover:text-zinc-700"
+          className={`px-6 py-3 font-bold text-sm border-b-2 transition-colors flex items-center gap-2 cursor-pointer whitespace-nowrap ${activeTab === "site" ? "border-[#0F2F6B] text-[#0F2F6B]" : "border-transparent text-zinc-500 hover:text-zinc-700"
             }`}
         >
           <LayoutTemplate size={18} /> Site Configuration
         </button>
         <button
+          onClick={() => handleTabChange("payment")}
+          className={`px-6 py-3 font-bold text-sm border-b-2 transition-colors flex items-center gap-2 cursor-pointer whitespace-nowrap ${activeTab === "payment" ? "border-[#0F2F6B] text-[#0F2F6B]" : "border-transparent text-zinc-500 hover:text-zinc-700"
+            }`}
+        >
+          <CreditCard size={18} /> Payment Settings
+        </button>
+        <button
           onClick={() => handleTabChange("policies")}
-          className={`px-6 py-3 font-bold text-sm border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${activeTab === "policies" ? "border-[#0F2F6B] text-[#0F2F6B]" : "border-transparent text-zinc-500 hover:text-zinc-700"
+          className={`px-6 py-3 font-bold text-sm border-b-2 transition-colors flex items-center gap-2 cursor-pointer whitespace-nowrap ${activeTab === "policies" ? "border-[#0F2F6B] text-[#0F2F6B]" : "border-transparent text-zinc-500 hover:text-zinc-700"
             }`}
         >
           <FileText size={18} /> Policies
@@ -209,6 +301,86 @@ function SettingsContent() {
             </div>
           </div>
 
+          {/* Shipping & Delivery Configuration */}
+          <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-6 space-y-6">
+            <div className="flex items-center gap-3 border-b border-zinc-100 pb-4">
+              <Truck size={20} className="text-[#0F2F6B]" />
+              <h2 className="text-lg font-bold text-[#0F2F6B]">Shipping & Delivery</h2>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-zinc-500 uppercase block mb-1">Shipping Fee (₹)</label>
+                  <input
+                    type="number"
+                    value={deliverySettings.shippingFee}
+                    onChange={(e) => setDeliverySettings(prev => ({ ...prev, shippingFee: Number(e.target.value) }))}
+                    className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#0F2F6B] focus:ring-1 focus:ring-[#0F2F6B]"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-zinc-500 uppercase block mb-1">COD Charge (₹)</label>
+                  <input
+                    type="number"
+                    value={deliverySettings.codCharge}
+                    onChange={(e) => setDeliverySettings(prev => ({ ...prev, codCharge: Number(e.target.value) }))}
+                    className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#0F2F6B] focus:ring-1 focus:ring-[#0F2F6B]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-zinc-500 uppercase block mb-1">Free Delivery Threshold (₹)</label>
+                <input
+                  type="number"
+                  value={deliverySettings.freeDeliveryThreshold}
+                  onChange={(e) => setDeliverySettings(prev => ({ ...prev, freeDeliveryThreshold: Number(e.target.value) }))}
+                  className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#0F2F6B] focus:ring-1 focus:ring-[#0F2F6B]"
+                />
+              </div>
+
+              <div className="flex flex-col gap-3 pt-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="enableCOD"
+                    checked={deliverySettings.enableCOD}
+                    onChange={(e) => setDeliverySettings(prev => ({ ...prev, enableCOD: e.target.checked }))}
+                    className="w-4 h-4 rounded border-zinc-300 text-[#0F2F6B] focus:ring-[#0F2F6B] accent-[#0F2F6B]"
+                  />
+                  <label htmlFor="enableCOD" className="text-xs font-semibold text-zinc-700 select-none">
+                    Enable COD Payment Method
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="enableFreeShipping"
+                    checked={deliverySettings.enableFreeShipping}
+                    onChange={(e) => setDeliverySettings(prev => ({ ...prev, enableFreeShipping: e.target.checked }))}
+                    className="w-4 h-4 rounded border-zinc-300 text-[#0F2F6B] focus:ring-[#0F2F6B] accent-[#0F2F6B]"
+                  />
+                  <label htmlFor="enableFreeShipping" className="text-xs font-semibold text-zinc-700 select-none">
+                    Enable Free Shipping Threshold
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-zinc-500 uppercase block mb-1">Delivery Message</label>
+                <input
+                  type="text"
+                  value={deliverySettings.deliveryMessage}
+                  onChange={(e) => setDeliverySettings(prev => ({ ...prev, deliveryMessage: e.target.value }))}
+                  className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#0F2F6B] focus:ring-1 focus:ring-[#0F2F6B]"
+                  placeholder="e.g. Free shipping on orders above ₹999"
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Social Links */}
           <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-6 space-y-6 md:col-span-2">
             <div className="flex items-center gap-3 border-b border-zinc-100 pb-4">
@@ -254,7 +426,54 @@ function SettingsContent() {
         </div>
       )}
 
-      {/* Tab 3: Policies */}
+      {/* Tab 3: Payment Settings */}
+      {activeTab === "payment" && (
+        <div className="max-w-xl bg-white rounded-2xl shadow-sm border border-zinc-100 p-6 space-y-6">
+          <div className="flex items-center gap-3 border-b border-zinc-100 pb-4">
+            <CreditCard size={20} className="text-[#0F2F6B]" />
+            <h2 className="text-lg font-bold text-[#0F2F6B]">Razorpay Credentials</h2>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-bold text-zinc-500 uppercase block mb-1">Razorpay Key ID</label>
+              <input
+                type="text"
+                name="razorpayKeyId"
+                value={paymentSettings.razorpayKeyId}
+                onChange={(e) => setPaymentSettings(prev => ({ ...prev, razorpayKeyId: e.target.value }))}
+                className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#0F2F6B] focus:ring-1 focus:ring-[#0F2F6B]"
+                placeholder="rzp_test_..."
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-zinc-500 uppercase block mb-1">Razorpay Key Secret</label>
+              <input
+                type="password"
+                name="razorpayKeySecret"
+                value={paymentSettings.razorpayKeySecret}
+                onChange={(e) => setPaymentSettings(prev => ({ ...prev, razorpayKeySecret: e.target.value }))}
+                className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#0F2F6B] focus:ring-1 focus:ring-[#0F2F6B]"
+                placeholder="••••••••••••••••••••••••"
+              />
+            </div>
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                type="checkbox"
+                id="razorpayEnabled"
+                checked={paymentSettings.razorpayEnabled}
+                onChange={(e) => setPaymentSettings(prev => ({ ...prev, razorpayEnabled: e.target.checked }))}
+                className="w-4 h-4 rounded border-zinc-300 text-secondary focus:ring-secondary accent-secondary"
+              />
+              <label htmlFor="razorpayEnabled" className="text-xs font-semibold text-zinc-700 select-none">
+                Enable Razorpay Payment Gateway Status
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 4: Policies */}
       {activeTab === "policies" && (
         <PoliciesManager />
       )}

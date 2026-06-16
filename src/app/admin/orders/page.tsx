@@ -32,9 +32,20 @@ export default function OrdersPage() {
     return () => unsubscribe();
   }, []);
 
+  const getPaymentStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case "paid": return "bg-emerald-100 text-emerald-700 border-emerald-200";
+      case "failed": return "bg-red-100 text-red-700 border-red-200";
+      default: return "bg-amber-100 text-amber-700 border-amber-200";
+    }
+  };
+
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     try {
-      await updateDoc(doc(db, "orders", orderId), { status: newStatus });
+      await updateDoc(doc(db, "orders", orderId), { 
+        status: newStatus,
+        orderStatus: newStatus
+      });
     } catch (error) {
       console.error("Error updating order status:", error);
     }
@@ -101,15 +112,17 @@ export default function OrdersPage() {
                 <th className="px-6 py-4 font-semibold">Order ID</th>
                 <th className="px-6 py-4 font-semibold">Customer</th>
                 <th className="px-6 py-4 font-semibold">Date</th>
+                <th className="px-6 py-4 font-semibold">Payment Info</th>
+                <th className="px-6 py-4 font-semibold">Payment Status</th>
                 <th className="px-6 py-4 font-semibold">Total Amount</th>
-                <th className="px-6 py-4 font-semibold">Status</th>
+                <th className="px-6 py-4 font-semibold">Order Status</th>
                 <th className="px-6 py-4 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-zinc-500">Loading orders...</td>
+                  <td colSpan={8} className="px-6 py-8 text-center text-zinc-500">Loading orders...</td>
                 </tr>
               ) : filteredOrders.length > 0 ? filteredOrders.map((order) => (
                 <tr key={order.id} className="hover:bg-zinc-50 transition-colors">
@@ -121,12 +134,23 @@ export default function OrdersPage() {
                   <td className="px-6 py-4 text-zinc-500">
                     {order.createdAt ? new Date(order.createdAt.toMillis()).toLocaleString() : "N/A"}
                   </td>
-                  <td className="px-6 py-4 font-bold text-[#0F2F6B]">₹{order.totalAmount?.toLocaleString() || 0}</td>
+                  <td className="px-6 py-4">
+                    <p className="font-semibold text-zinc-700">{order.paymentMethod || "COD"}</p>
+                    {order.razorpayPaymentId && (
+                      <p className="text-xs text-zinc-400 font-mono mt-0.5">{order.razorpayPaymentId}</p>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`text-xs font-bold uppercase tracking-wider rounded-lg px-2.5 py-1 border ${getPaymentStatusColor(order.paymentStatus)}`}>
+                      {order.paymentStatus || "Pending"}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 font-bold text-[#0F2F6B]">₹{(order.total ?? order.totalAmount)?.toLocaleString() || 0}</td>
                   <td className="px-6 py-4">
                     <select
-                      value={order.status || "pending"}
+                      value={order.status || order.orderStatus || "pending"}
                       onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                      className={`text-xs font-bold uppercase tracking-wider rounded-lg px-2 py-1 border focus:outline-none cursor-pointer appearance-none ${getStatusColor(order.status)}`}
+                      className={`text-xs font-bold uppercase tracking-wider rounded-lg px-2 py-1 border focus:outline-none cursor-pointer appearance-none ${getStatusColor(order.status || order.orderStatus)}`}
                     >
                       <option value="pending">Pending</option>
                       <option value="confirmed">Confirmed</option>
@@ -144,7 +168,7 @@ export default function OrdersPage() {
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-zinc-500">No orders found.</td>
+                  <td colSpan={8} className="px-6 py-8 text-center text-zinc-500">No orders found.</td>
                 </tr>
               )}
             </tbody>

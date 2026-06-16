@@ -285,7 +285,12 @@ function AccountDashboardContent() {
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between justify-center gap-2 border-b border-zinc-100 pb-3">
                           <div>
                             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Order ID</span>
-                            <span className="font-bold text-primary text-sm">{order.id}</span>
+                            <span className="font-bold text-primary text-sm">{order.orderNumber || order.id}</span>
+                            {order.paymentMethod && (
+                              <span className="text-[9px] text-zinc-400 font-bold block mt-0.5">
+                                Method: {order.paymentMethod} {order.razorpayPaymentId ? `(${order.razorpayPaymentId})` : ""}
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center gap-6">
                             <div>
@@ -296,36 +301,54 @@ function AccountDashboardContent() {
                             </div>
                             <div>
                               <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Total Amount</span>
-                              <span className="font-bold text-secondary text-xs">₹{order.totalAmount || order.total}</span>
+                              <span className="font-bold text-secondary text-xs">₹{(order.totalAmount || order.total || 0).toLocaleString()}</span>
                             </div>
                           </div>
                         </div>
 
                         {/* Items */}
                         <div className="space-y-2">
-                          {order.items && order.items.map((item: any, index: number) => (
+                          {order.products && order.products.map((item: any, index: number) => (
                             <div key={index} className="flex justify-between items-center text-xs">
                               <span className="font-semibold text-zinc-700">{item.name} x{item.quantity}</span>
-                              <span className="font-bold text-primary">₹{item.price * item.quantity}</span>
+                              <span className="font-bold text-primary">₹{(item.price * item.quantity).toLocaleString()}</span>
+                            </div>
+                          ))}
+                          {order.items && !order.products && order.items.map((item: any, index: number) => (
+                            <div key={index} className="flex justify-between items-center text-xs">
+                              <span className="font-semibold text-zinc-700">{item.name} x{item.quantity}</span>
+                              <span className="font-bold text-primary">₹{(item.price * item.quantity).toLocaleString()}</span>
                             </div>
                           ))}
                         </div>
 
-                        {/* Status indicator */}
-                        <div className="flex items-center justify-between pt-2 border-t border-zinc-100 text-xs">
+                        {/* Status indicators */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-3 border-t border-zinc-100 gap-2 text-xs">
                           <span className="text-zinc-500 font-medium normal-case">
-                            Shipping Address: {order.shippingAddress ? `${order.shippingAddress.street}, ${order.shippingAddress.city}` : (order.address || "N/A")}
+                            Shipping Address: {order.shippingAddress ? `${order.shippingAddress.street || order.shippingAddress.addressLine1 || ""}, ${order.shippingAddress.city || ""}` : (order.address || "N/A")}
                           </span>
-                          <div className="flex items-center gap-1.5 uppercase font-bold text-[9px] tracking-wider">
-                            {order.status === "delivered" ? (
-                              <span className="text-green-700 bg-green-50 px-2.5 py-1 rounded flex items-center gap-1">
-                                <CheckCircle2 size={12} /> Delivered
-                              </span>
-                            ) : (
-                              <span className="text-amber-700 bg-amber-50 px-2.5 py-1 rounded flex items-center gap-1">
-                                <Clock size={12} /> {order.status || "Processing"}
-                              </span>
-                            )}
+                          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                            {/* Payment Status */}
+                            <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider border ${
+                              order.paymentStatus === "Paid"
+                                ? "bg-green-50 text-green-700 border-green-200"
+                                : order.paymentStatus === "Failed"
+                                ? "bg-red-50 text-red-700 border-red-200"
+                                : "bg-amber-50 text-amber-700 border-amber-200"
+                            }`}>
+                              Payment: {order.paymentStatus || "Pending"}
+                            </span>
+
+                            {/* Order Status */}
+                            <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider border ${
+                              order.orderStatus === "delivered" || order.status === "delivered"
+                                ? "bg-green-50 text-green-700 border-green-200"
+                                : order.orderStatus === "cancelled" || order.status === "cancelled"
+                                ? "bg-red-50 text-red-700 border-red-200"
+                                : "bg-blue-50 text-blue-700 border-blue-200"
+                            }`}>
+                              Order: {order.orderStatus || order.status || "Processing"}
+                            </span>
                           </div>
                         </div>
 

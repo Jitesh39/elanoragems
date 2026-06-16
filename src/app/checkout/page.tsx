@@ -4,14 +4,14 @@ import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ShoppingBag, 
-  MapPin, 
-  CreditCard, 
-  CheckCircle2, 
-  ChevronRight, 
-  Trash2, 
-  Plus, 
+import {
+  ShoppingBag,
+  MapPin,
+  CreditCard,
+  CheckCircle2,
+  ChevronRight,
+  Trash2,
+  Plus,
   ChevronLeft,
   Truck,
   Sparkles,
@@ -23,7 +23,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useAuth, Address } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 // Wrap checkout content in a sub-component to safely use useSearchParams in Next.js Suspense
@@ -40,7 +40,7 @@ function CheckoutContent() {
   // Addresses
   const [selectedAddressId, setSelectedAddressId] = useState("");
   const [newAddressForm, setNewAddressForm] = useState(false);
-  
+
   // Custom manual shipping address state
   const [shipName, setShipName] = useState("");
   const [shipPhone, setShipPhone] = useState("");
@@ -49,8 +49,69 @@ function CheckoutContent() {
   const [shipState, setShipState] = useState("");
   const [shipZip, setShipZip] = useState("");
 
-  // Payment Method
-  const [paymentMethod, setPaymentMethod] = useState("upi");
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [paymentConfig, setPaymentConfig] = useState({
+    razorpayKeyId: "",
+    razorpayEnabled: false
+  });
+  const [deliveryConfig, setDeliveryConfig] = useState({
+    shippingFee: 99,
+    codCharge: 49,
+    freeDeliveryThreshold: 999,
+    enableCOD: true,
+    enableFreeShipping: true,
+    deliveryMessage: "Free shipping on orders above ₹999"
+  });
+
+  useEffect(() => {
+    const docRef = doc(db, "settings", "storeConfig");
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setPaymentConfig({
+          razorpayKeyId: data.razorpayKeyId || "",
+          razorpayEnabled: data.razorpayEnabled || false
+        });
+      }
+    });
+
+    const deliveryRef = doc(db, "settings", "store");
+    const unsubscribeDelivery = onSnapshot(deliveryRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setDeliveryConfig({
+          shippingFee: data.shippingFee !== undefined ? Number(data.shippingFee) : 99,
+          codCharge: data.codCharge !== undefined ? Number(data.codCharge) : 49,
+          freeDeliveryThreshold: data.freeDeliveryThreshold !== undefined ? Number(data.freeDeliveryThreshold) : 999,
+          enableCOD: data.enableCOD !== undefined ? Boolean(data.enableCOD) : true,
+          enableFreeShipping: data.enableFreeShipping !== undefined ? Boolean(data.enableFreeShipping) : true,
+          deliveryMessage: data.deliveryMessage !== undefined ? String(data.deliveryMessage) : "Free shipping on orders above ₹999",
+        });
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeDelivery();
+    };
+  }, []);
+
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if ((window as any).Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  // Payment Method: Default to razorpay online
+  const [paymentMethod, setPaymentMethod] = useState("razorpay");
 
   // Coupon state
   const [couponCode, setCouponCode] = useState("");
@@ -87,22 +148,19 @@ function CheckoutContent() {
     }
   }, [step]);
 
-  // Math Calculations
-  const SHIPPING_THRESHOLD = 999;
-  const SHIPPING_COST = 99;
-
   // Coupon deduction
-  const discountAmount = appliedCoupon === "ELANORA10" || appliedCoupon === "SHIMMER10" 
-    ? Math.round(cartSubtotal * 0.10) 
+  const discountAmount = appliedCoupon === "ELANORA10" || appliedCoupon === "SHIMMER10"
+    ? Math.round(cartSubtotal * 0.10)
     : 0;
 
-  // Shipping
-  const shippingFee = cartSubtotal >= SHIPPING_THRESHOLD || cartSubtotal === 0 ? 0 : SHIPPING_COST;
+  // Dynamic Shipping calculations
+  const isFreeShippingEligible = deliveryConfig.enableFreeShipping && (cartSubtotal - discountAmount) >= deliveryConfig.freeDeliveryThreshold;
+  const shippingFee = cartSubtotal === 0 ? 0 : (isFreeShippingEligible ? 0 : deliveryConfig.shippingFee);
 
-  // GST (Jewellery has standard 3% GST rate in India)
-  const gstAmount = Math.round((cartSubtotal - discountAmount) * 0.03);
+  // COD Charge
+  const codChargeApplied = paymentMethod === "cod" ? deliveryConfig.codCharge : 0;
 
-  const finalTotal = cartSubtotal - discountAmount + shippingFee + gstAmount;
+  const finalTotal = cartSubtotal - discountAmount + shippingFee + codChargeApplied;
 
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,64 +185,186 @@ function CheckoutContent() {
       }
       setStep(3);
     } else if (step === 3) {
+      setIsProcessingPayment(true);
       try {
-        // Payment mock & order placement
-        const randomOrderId = `ELN-${Math.floor(100000 + Math.random() * 900000)}`;
-
         // Find selected address details
-        const address = newAddressForm 
+        const address = newAddressForm
           ? {
-              name: shipName,
-              phone: shipPhone,
-              street: shipStreet,
-              city: shipCity,
-              state: shipState,
-              zipCode: shipZip,
-            }
+            name: shipName,
+            phone: shipPhone,
+            street: shipStreet,
+            city: shipCity,
+            state: shipState,
+            zipCode: shipZip,
+          }
           : user?.addresses.find((a) => a.id === selectedAddressId);
 
-        const orderData = {
-          customerEmail: user?.email || "Guest",
-          customerName: address?.name || user?.displayName || "Guest",
-          shippingAddress: {
-            fullName: address?.name || "",
-            phone: address?.phone || "",
-            street: address?.street || "",
-            city: address?.city || "",
-            state: address?.state || "",
-            zipCode: address?.zipCode || "",
-          },
-          items: cartItems.map((item) => ({
-            productId: item.productId,
-            name: item.name,
-            price: item.price,
-            quantity: item.quantity,
-            image: item.image,
-            material: item.material || ""
-          })),
-          subtotal: cartSubtotal,
-          discount: discountAmount,
-          shippingFee: shippingFee,
-          gst: gstAmount,
-          totalAmount: finalTotal,
-          paymentMethod: paymentMethod,
-          couponApplied: appliedCoupon || null,
-          status: "pending",
-          createdAt: serverTimestamp()
-        };
-
-        // If user is authenticated, store order in Firestore. If guest, allow guest checkout.
-        // Note: The firestore.rules require authentication to write to /orders.
-        if (user) {
-          await setDoc(doc(db, "orders", randomOrderId), orderData);
+        if (!address) {
+          alert("Shipping address is required.");
+          setIsProcessingPayment(false);
+          return;
         }
 
-        setOrderId(randomOrderId);
-        setStep(4);
-        clearCart();
+        if (paymentMethod === "cod") {
+          // 1. Create COD order on the backend
+          const response = await fetch("/api/create-cod-order", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              items: cartItems.map(item => ({ productId: item.productId, quantity: item.quantity, material: item.material || "" })),
+              couponCode: appliedCoupon,
+              shippingAddress: {
+                fullName: address.name || "",
+                phone: address.phone || "",
+                street: address.street || "",
+                city: address.city || "",
+                state: address.state || "",
+                zipCode: address.zipCode || "",
+              },
+              userId: user?.uid || "guest",
+              customerEmail: user?.email || "Guest",
+              customerName: address.name || user?.displayName || "Guest"
+            })
+          });
+
+          if (!response.ok) {
+            const errData = await response.json();
+            alert(errData.message || "Failed to place COD order.");
+            setIsProcessingPayment(false);
+            return;
+          }
+
+          const result = await response.json();
+          clearCart();
+          router.push(`/checkout/success?orderNumber=${result.orderNumber}&total=${finalTotal}`);
+          return;
+        }
+
+        // Check if Razorpay is enabled
+        if (!paymentConfig.razorpayEnabled) {
+          alert("Online payment is currently disabled. Please contact the administrator.");
+          setIsProcessingPayment(false);
+          return;
+        }
+
+        // Load Razorpay script
+        const loaded = await loadRazorpayScript();
+        if (!loaded) {
+          alert("Failed to load Razorpay payment window. Please check your internet connection.");
+          setIsProcessingPayment(false);
+          return;
+        }
+
+        // 1. Create order on the backend
+        const orderRes = await fetch("/api/create-order", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            items: cartItems.map(item => ({ id: item.productId, quantity: item.quantity })),
+            couponCode: appliedCoupon
+          })
+        });
+
+        if (!orderRes.ok) {
+          const errData = await orderRes.json();
+          alert(errData.message || "Failed to initiate payment transaction.");
+          setIsProcessingPayment(false);
+          return;
+        }
+
+        const razorpayOrder = await orderRes.json();
+
+        // 2. Open Razorpay Checkout overlay popup
+        const options = {
+          key: paymentConfig.razorpayKeyId,
+          amount: razorpayOrder.amount,
+          currency: razorpayOrder.currency,
+          name: "ElanoraGems",
+          description: "Purchase Premium Luxury Jewellery",
+          image: "https://elanoragems.in/logo.png",
+          order_id: razorpayOrder.orderId,
+          handler: async function (response: any) {
+            try {
+              // 3. Verify signature on the backend
+              const verifyRes = await fetch("/api/verify-payment", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  razorpayOrderId: response.razorpay_order_id,
+                  razorpayPaymentId: response.razorpay_payment_id,
+                  razorpaySignature: response.razorpay_signature,
+                  orderData: {
+                    userId: user?.uid || "guest",
+                    customerEmail: user?.email || "Guest",
+                    customerName: address?.name || user?.displayName || "Guest",
+                    shippingAddress: {
+                      fullName: address?.name || "",
+                      phone: address?.phone || "",
+                      street: address?.street || "",
+                      city: address?.city || "",
+                      state: address?.state || "",
+                      zipCode: address?.zipCode || "",
+                    },
+                    items: cartItems.map((item) => ({
+                      productId: item.productId,
+                      name: item.name,
+                      price: item.price,
+                      quantity: item.quantity,
+                      image: item.image,
+                      material: item.material || ""
+                    })),
+                    subtotal: cartSubtotal,
+                    discount: discountAmount,
+                    shippingFee: shippingFee,
+                    totalAmount: finalTotal,
+                    paymentMethod: "Razorpay",
+                    couponApplied: appliedCoupon || null
+                  }
+                })
+              });
+
+              if (verifyRes.ok) {
+                const result = await verifyRes.json();
+                clearCart();
+                router.push(`/checkout/success?orderNumber=${result.orderNumber}&total=${finalTotal}`);
+              } else {
+                const err = await verifyRes.json();
+                alert(err.message || "Payment signature verification failed.");
+              }
+            } catch (err) {
+              console.error("Signature verification error:", err);
+              alert("Signature verification error. Please try again.");
+            } finally {
+              setIsProcessingPayment(false);
+            }
+          },
+          prefill: {
+            name: address?.name || user?.displayName || "",
+            email: user?.email || "",
+            contact: address?.phone || ""
+          },
+          theme: {
+            color: "#0F2F6B"
+          },
+          modal: {
+            ondismiss: function () {
+              setIsProcessingPayment(false);
+            }
+          }
+        };
+
+        const rzp = new (window as any).Razorpay(options);
+        rzp.open();
       } catch (error) {
-        console.error("Error creating order in Firestore:", error);
-        alert("Failed to place order. Please try again.");
+        console.error("Error creating payment transaction:", error);
+        alert("Payment initialization error. Please try again.");
+        setIsProcessingPayment(false);
       }
     }
   };
@@ -194,37 +374,34 @@ function CheckoutContent() {
       {/* Step Progress indicators */}
       {step < 4 && (
         <div className="flex items-center justify-center gap-2 sm:gap-6 mb-10 text-xs sm:text-sm font-bold uppercase tracking-wider text-zinc-400">
-          <button 
+          <button
             onClick={() => setStep(1)}
             className={`flex items-center gap-1.5 transition-colors ${step >= 1 ? "text-primary font-bold" : ""}`}
           >
-            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
-              step >= 1 ? "bg-primary text-white" : "bg-zinc-200 text-zinc-600"
-            }`}>1</span>
+            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 1 ? "bg-primary text-white" : "bg-zinc-200 text-zinc-600"
+              }`}>1</span>
             <span>Cart</span>
           </button>
           <ChevronRight size={14} />
 
-          <button 
+          <button
             disabled={step < 2}
             onClick={() => setStep(2)}
             className={`flex items-center gap-1.5 transition-colors ${step >= 2 ? "text-primary font-bold" : "cursor-not-allowed"}`}
           >
-            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
-              step >= 2 ? "bg-primary text-white" : "bg-zinc-200 text-zinc-600"
-            }`}>2</span>
+            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 2 ? "bg-primary text-white" : "bg-zinc-200 text-zinc-600"
+              }`}>2</span>
             <span>Address</span>
           </button>
           <ChevronRight size={14} />
 
-          <button 
+          <button
             disabled={step < 3}
             onClick={() => setStep(3)}
             className={`flex items-center gap-1.5 transition-colors ${step >= 3 ? "text-primary font-bold" : "cursor-not-allowed"}`}
           >
-            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
-              step >= 3 ? "bg-primary text-white" : "bg-zinc-200 text-zinc-600"
-            }`}>3</span>
+            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 3 ? "bg-primary text-white" : "bg-zinc-200 text-zinc-600"
+              }`}>3</span>
             <span>Payment</span>
           </button>
         </div>
@@ -233,10 +410,10 @@ function CheckoutContent() {
       {/* Main grids */}
       {step < 4 ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
-          
+
           {/* Left Panel (8 cols): Step View */}
           <div className="lg:col-span-8 bg-white border border-zinc-100 rounded-3xl shadow-sm p-6 sm:p-8">
-            
+
             {/* Step 1: Cart Items Summary */}
             {step === 1 && (
               <div className="space-y-6">
@@ -285,8 +462,8 @@ function CheckoutContent() {
                       <Link href="/collections" className="inline-flex items-center gap-1 text-xs font-bold text-zinc-400 hover:text-secondary uppercase">
                         <ChevronLeft size={16} /> Add More items
                       </Link>
-                      <button 
-                        onClick={() => setStep(2)} 
+                      <button
+                        onClick={() => setStep(2)}
                         className="px-6 py-2.5 bg-primary hover:bg-primary-hover text-white text-xs font-bold uppercase tracking-wider rounded-lg shadow"
                       >
                         Proceed To Shipping
@@ -343,14 +520,13 @@ function CheckoutContent() {
                   <div className="space-y-3">
                     {user && user.addresses.length > 0 ? (
                       user.addresses.map((addr) => (
-                        <div 
+                        <div
                           key={addr.id}
                           onClick={() => setSelectedAddressId(addr.id)}
-                          className={`p-4 border rounded-2xl cursor-pointer transition-all ${
-                            selectedAddressId === addr.id 
-                              ? "border-secondary bg-accent/20 ring-1 ring-secondary" 
-                              : "border-zinc-100 hover:border-zinc-200"
-                          }`}
+                          className={`p-4 border rounded-2xl cursor-pointer transition-all ${selectedAddressId === addr.id
+                            ? "border-secondary bg-accent/20 ring-1 ring-secondary"
+                            : "border-zinc-100 hover:border-zinc-200"
+                            }`}
                         >
                           <div className="flex justify-between items-center text-xs">
                             <span className="font-bold text-primary">{addr.name}</span>
@@ -372,7 +548,7 @@ function CheckoutContent() {
                   <button onClick={() => setStep(1)} className="inline-flex items-center gap-1 text-xs font-bold text-zinc-400 hover:text-secondary uppercase">
                     <ChevronLeft size={16} /> Back to Cart
                   </button>
-                  <button 
+                  <button
                     onClick={handleCreateOrder}
                     className="px-6 py-2.5 bg-primary hover:bg-primary-hover text-white text-xs font-bold uppercase tracking-wider rounded-lg shadow"
                   >
@@ -387,55 +563,81 @@ function CheckoutContent() {
             {step === 3 && (
               <div className="space-y-6">
                 <div className="border-b border-zinc-100 pb-3">
-                  <h2 className="font-serif text-xl font-bold text-primary">Secure Checkout Payment</h2>
-                  <p className="text-zinc-400 text-[10px] uppercase font-bold tracking-wider mt-0.5">Select preferred payment method</p>
+                  <h2 className="font-serif text-xl font-bold text-primary">Choose Payment Method</h2>
+                  <p className="text-zinc-400 text-[10px] uppercase font-bold tracking-wider mt-0.5">Select your preferred payment method</p>
                 </div>
 
-                <div className="space-y-3">
-                  {/* UPI */}
-                  <label className={`p-4 border rounded-2xl flex items-center justify-between cursor-pointer transition-all ${
-                    paymentMethod === "upi" ? "border-secondary bg-accent/20 ring-1 ring-secondary" : "border-zinc-100"
-                  }`}>
-                    <div className="flex items-center gap-3">
-                      <input type="radio" name="payment" value="upi" checked={paymentMethod === "upi"} onChange={() => setPaymentMethod("upi")} className="accent-secondary" />
-                      <div>
-                        <span className="text-xs font-bold text-primary uppercase block">UPI / Google Pay / PhonePe</span>
-                        <span className="text-[10px] text-zinc-400 normal-case">Pay instantly using any UPI app.</span>
-                      </div>
+                {/* Selector Buttons */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <button
+                    onClick={() => setPaymentMethod("razorpay")}
+                    className={`p-5 rounded-2xl border text-left flex flex-col justify-between h-28 cursor-pointer transition-all ${paymentMethod === "razorpay"
+                      ? "border-secondary bg-accent/20 ring-1 ring-secondary"
+                      : "border-zinc-200 hover:border-zinc-300"
+                      }`}
+                  >
+                    <div className="flex justify-between items-center w-full">
+                      <span className="font-bold text-xs text-primary uppercase tracking-wider">Pay Online</span>
+                      <span className={`w-4 h-4 rounded-full border flex items-center justify-center ${paymentMethod === "razorpay" ? "border-secondary bg-secondary" : "border-zinc-300"
+                        }`}>
+                        {paymentMethod === "razorpay" && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </span>
                     </div>
-                    <Award size={18} className="text-secondary" />
-                  </label>
-
-                  {/* Cards */}
-                  <label className={`p-4 border rounded-2xl flex items-center justify-between cursor-pointer transition-all ${
-                    paymentMethod === "card" ? "border-secondary bg-accent/20 ring-1 ring-secondary" : "border-zinc-100"
-                  }`}>
-                    <div className="flex items-center gap-3">
-                      <input type="radio" name="payment" value="card" checked={paymentMethod === "card"} onChange={() => setPaymentMethod("card")} className="accent-secondary" />
-                      <div>
-                        <span className="text-xs font-bold text-primary uppercase block">Credit / Debit Card</span>
-                        <span className="text-[10px] text-zinc-400 normal-case">RuPay, Visa, Mastercard cards accepted.</span>
-                      </div>
+                    <div>
+                      <h4 className="font-serif text-sm font-bold text-primary">Credit/Debit Card, UPI</h4>
+                      <p className="text-[10px] text-zinc-400 mt-1 font-medium">UPI, Netbanking, Cards & popular wallets</p>
                     </div>
-                    <CreditCard size={18} className="text-secondary" />
-                  </label>
+                  </button>
+
+                  {deliveryConfig.enableCOD && (
+                    <button
+                      onClick={() => setPaymentMethod("cod")}
+                      className={`p-5 rounded-2xl border text-left flex flex-col justify-between h-28 cursor-pointer transition-all ${paymentMethod === "cod"
+                        ? "border-secondary bg-accent/20 ring-1 ring-secondary"
+                        : "border-zinc-200 hover:border-zinc-300"
+                        }`}
+                    >
+                      <div className="flex justify-between items-center w-full">
+                        <span className="font-bold text-xs text-primary uppercase tracking-wider">Cash On Delivery</span>
+                        <span className={`w-4 h-4 rounded-full border flex items-center justify-center ${paymentMethod === "cod" ? "border-secondary bg-secondary" : "border-zinc-300"
+                          }`}>
+                          {paymentMethod === "cod" && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        </span>
+                      </div>
+                      <div>
+                        <h4 className="font-serif text-sm font-bold text-primary">Cash On Delivery (COD)</h4>
+                        <p className="text-[10px] text-zinc-400 mt-1 font-medium">Pay with cash at your doorstep (+₹{deliveryConfig.codCharge})</p>
+                      </div>
+                    </button>
+                  )}
                 </div>
 
-                {/* Simulated payment button */}
-                <div className="p-4 bg-zinc-50 border border-zinc-100 rounded-2xl text-[10px] text-zinc-400 font-bold uppercase tracking-wide flex items-center gap-2">
-                  <ShieldCheck size={16} className="text-green-700" />
-                  <span>Secure 256-bit encryption. Razorpay gateway integrated sandbox ready.</span>
-                </div>
+                {/* Razorpay specifics if selected */}
+                {paymentMethod === "razorpay" && (
+                  <div className="p-4 bg-zinc-50 border border-zinc-100 rounded-2xl text-[10px] text-zinc-400 font-bold uppercase tracking-wide flex items-center justify-center gap-2 animate-fadeIn">
+                    <ShieldCheck size={16} className="text-[#0F2F6B]" />
+                    <span>Secure Payment Powered by Razorpay</span>
+                  </div>
+                )}
+
+                {/* COD specifics if selected */}
+                {paymentMethod === "cod" && (
+                  <div className="p-4 bg-zinc-50 border border-zinc-100 rounded-2xl text-[10px] text-zinc-400 font-bold uppercase tracking-wide flex items-center justify-center gap-2 animate-fadeIn">
+                    <Truck size={16} className="text-secondary" />
+                    <span>Pay with cash or UPI at the time of delivery</span>
+                  </div>
+                )}
 
                 <div className="pt-6 flex justify-between">
                   <button onClick={() => setStep(2)} className="inline-flex items-center gap-1 text-xs font-bold text-zinc-400 hover:text-secondary uppercase">
                     <ChevronLeft size={16} /> Back to Address
                   </button>
-                  <button 
+                  <button
                     onClick={handleCreateOrder}
-                    className="px-8 py-3 bg-secondary hover:bg-secondary-hover text-white text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg"
+                    disabled={isProcessingPayment}
+                    className="px-8 py-3 bg-secondary hover:bg-secondary-hover text-white text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg disabled:opacity-50 cursor-pointer"
                   >
-                    Pay ₹{finalTotal} Now
+                    {isProcessingPayment ? "Processing..." : paymentMethod === "cod" ? `Place Order via COD (₹${finalTotal})` : `Pay Securely with Razorpay (₹${finalTotal})`}
                   </button>
                 </div>
 
@@ -447,7 +649,7 @@ function CheckoutContent() {
           {/* Right Panel (4 cols): Order Summary Sidebar */}
           <div className="lg:col-span-4 bg-zinc-50 border border-zinc-100 rounded-3xl p-6 h-fit space-y-6">
             <h3 className="font-serif text-lg font-bold text-primary border-b border-zinc-200 pb-2">Order Summary</h3>
-            
+
             {/* Promo code form */}
             {!appliedCoupon ? (
               <form onSubmit={handleApplyCoupon} className="flex gap-2">
@@ -486,10 +688,12 @@ function CheckoutContent() {
                   {shippingFee > 0 ? `₹${shippingFee}` : "FREE"}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span>GST (3%)</span>
-                <span className="font-semibold text-primary">₹{gstAmount}</span>
-              </div>
+              {paymentMethod === "cod" && (
+                <div className="flex justify-between text-primary">
+                  <span>COD Charge</span>
+                  <span className="font-semibold">₹{deliveryConfig.codCharge}</span>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-between items-center text-sm font-bold text-primary">
@@ -497,19 +701,22 @@ function CheckoutContent() {
               <span className="font-serif text-base text-secondary">₹{finalTotal}</span>
             </div>
 
-            {/* Shipping note */}
-            {shippingFee > 0 && (
-              <div className="flex items-center gap-1.5 text-[9px] font-bold text-secondary bg-amber-50 rounded p-2 uppercase tracking-wide">
-                <Truck size={14} />
-                <span>Add ₹{SHIPPING_THRESHOLD - cartSubtotal} more for FREE shipping</span>
-              </div>
-            )}
+            {/* Free Shipping Alert message */}
+            <div className={`flex items-center gap-1.5 text-[9px] font-bold rounded p-2 uppercase tracking-wide ${shippingFee === 0 ? "text-green-700 bg-green-50" : "text-secondary bg-amber-50"
+              }`}>
+              <Truck size={14} />
+              {shippingFee === 0 ? (
+                <span>✅ You qualify for FREE Shipping</span>
+              ) : (
+                <span>Add ₹{deliveryConfig.freeDeliveryThreshold - (cartSubtotal - discountAmount)} more for FREE Shipping</span>
+              )}
+            </div>
           </div>
 
         </div>
       ) : (
         /* Step 4: Success confirmation screen */
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           className="max-w-xl mx-auto text-center space-y-6 py-12"
@@ -549,14 +756,14 @@ function CheckoutContent() {
           </div>
 
           <div className="pt-4 flex flex-col sm:flex-row justify-center gap-4">
-            <Link 
-              href="/account?tab=orders" 
+            <Link
+              href="/account?tab=orders"
               className="px-6 py-3 bg-primary hover:bg-primary-hover text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow"
             >
               Track Orders
             </Link>
-            <Link 
-              href="/" 
+            <Link
+              href="/"
               className="px-6 py-3 bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-600 text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-sm"
             >
               Continue Shopping
