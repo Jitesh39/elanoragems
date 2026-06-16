@@ -64,27 +64,35 @@ export const Footer: React.FC = () => {
           </ul>
         </div>
 
-        {/* Column 3: Customer Care */}
+        {/* Column 3: Customer Support */}
         <div>
-          <h4 className="font-serif text-secondary text-sm font-bold tracking-widest uppercase mb-4">Customer Care</h4>
+          <h4 className="font-serif text-secondary text-sm font-bold tracking-widest uppercase mb-4">Customer Support</h4>
           <ul className="space-y-2.5 text-xs text-zinc-300 font-medium">
-            <li><Link href="/faq" className="hover:text-secondary transition-colors">FAQs</Link></li>
-            <li><Link href="/track-order" className="hover:text-secondary transition-colors">Track Your Order</Link></li>
-            <li><Link href="/returns" className="hover:text-secondary transition-colors">Easy Returns & Exchanges</Link></li>
-            <li><Link href="/shipping" className="hover:text-secondary transition-colors">Shipping Information</Link></li>
-            <li><Link href="/contact" className="hover:text-secondary transition-colors">Contact Support</Link></li>
+            <li><Link href="/faq" className="hover:text-secondary transition-colors">FAQ</Link></li>
+            <li><Link href="/policies/privacy" className="hover:text-secondary transition-colors">Privacy Policy</Link></li>
+            <li><Link href="/policies/terms" className="hover:text-secondary transition-colors">Terms & Conditions</Link></li>
+            <li><Link href="/policies/refund" className="hover:text-secondary transition-colors">Refund Policy</Link></li>
+            <li><Link href="/policies/shipping" className="hover:text-secondary transition-colors">Shipping Policy</Link></li>
+            <li><Link href="/policies/terms-of-use" className="hover:text-secondary transition-colors">Terms of Use</Link></li>
           </ul>
         </div>
 
-        {/* Column 4: Policies */}
+        {/* Column 4: Quick Links */}
         <div>
-          <h4 className="font-serif text-secondary text-sm font-bold tracking-widest uppercase mb-4">Our Policies</h4>
+          <h4 className="font-serif text-secondary text-sm font-bold tracking-widest uppercase mb-4">Quick Links</h4>
           <ul className="space-y-2.5 text-xs text-zinc-300 font-medium">
-            <li><Link href="/policies/privacy" className="hover:text-secondary transition-colors">Privacy Policy</Link></li>
-            <li><Link href="/policies/terms" className="hover:text-secondary transition-colors">Terms of Service</Link></li>
-            <li><Link href="/policies/refund" className="hover:text-secondary transition-colors">Refund & Return Policy</Link></li>
-            <li><Link href="/policies/shipping" className="hover:text-secondary transition-colors">Shipping Policy</Link></li>
-            <li><Link href="/policies/terms-of-use" className="hover:text-secondary transition-colors">Terms of Use</Link></li>
+            <li><Link href="/about" className="hover:text-secondary transition-colors">Our Story</Link></li>
+            <li>
+              <a
+                href="https://shiprocket.co/tracking/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-secondary transition-colors"
+              >
+                Track Your Order
+              </a>
+            </li>
+            <li><Link href="/contact" className="hover:text-secondary transition-colors">Contact Support</Link></li>
           </ul>
         </div>
 

@@ -69,6 +69,54 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 0.5
     },
+    {
+      url: `${baseUrl}/about`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.7
+    },
+    {
+      url: `${baseUrl}/contact`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.7
+    },
+    {
+      url: `${baseUrl}/faq`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.6
+    },
+    {
+      url: `${baseUrl}/policies/privacy`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.5
+    },
+    {
+      url: `${baseUrl}/policies/terms`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.5
+    },
+    {
+      url: `${baseUrl}/policies/refund`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.5
+    },
+    {
+      url: `${baseUrl}/policies/shipping`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.5
+    },
+    {
+      url: `${baseUrl}/policies/terms-of-use`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.5
+    },
     ...productEntries,
     ...categoryEntries
   ];

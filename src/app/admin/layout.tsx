@@ -20,7 +20,8 @@ import {
   LogOut,
   Menu,
   X,
-  MessageSquare
+  MessageSquare,
+  FileText
 } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -35,6 +36,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
     { name: "Manage Products", href: "/admin/products", icon: PackageSearch },
     { name: "Manage Reviews", href: "/admin/reviews", icon: MessageSquare },
+    { name: "Policies CMS", href: "/admin/content/policies", icon: FileText },
     { name: "Categories", href: "/admin/categories", icon: Tags },
     { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
     { name: "Gift Sets", href: "/admin/gift-sets", icon: Gift },

@@ -38,7 +38,7 @@ export default function AdminReviewsPage() {
       const reviewsRef = collection(db, "reviews");
       const q = query(reviewsRef, where("productId", "==", review.productId));
       const snapshot = await getDocs(q);
-      
+
       const remaining: any[] = [];
       snapshot.forEach((d) => {
         remaining.push(d.data());
