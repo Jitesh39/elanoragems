@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ProductCard } from "./ProductCard";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export const NewArrivals: React.FC = () => {
@@ -13,14 +13,18 @@ export const NewArrivals: React.FC = () => {
 
   useEffect(() => {
     const productsRef = collection(db, "products");
-    const unsubscribe = onSnapshot(productsRef, (snapshot) => {
+    const q = query(productsRef, orderBy("createdAt", "desc"), limit(8));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const prods: any[] = [];
       snapshot.forEach((doc) => {
         prods.push({ id: doc.id, ...doc.data() });
       });
-      // Sort by createdAt desc
+      // Fallback sorting in case of timestamp resolution
       prods.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
       setProducts(prods);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching new arrivals:", error);
       setLoading(false);
     });
 
@@ -54,7 +58,7 @@ export const NewArrivals: React.FC = () => {
             <div className="h-8 bg-zinc-100 rounded w-1/3 mx-auto mt-2" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-            {[...Array(4)].map((_, i) => (
+            {[...Array(8)].map((_, i) => (
               <div key={i} className="bg-zinc-100 rounded-2xl aspect-[3/4] w-full" />
             ))}
           </div>
@@ -63,7 +67,7 @@ export const NewArrivals: React.FC = () => {
     );
   }
 
-  const newProducts = products.slice(0, 4);
+  const newProducts = products.slice(0, 8);
 
   if (newProducts.length === 0) {
     return null; // Return null if no new arrivals exist

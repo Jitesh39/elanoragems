@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ProductCard } from "./ProductCard";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, query, where, orderBy, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 const TABS = [
@@ -17,25 +17,67 @@ export const Bestsellers: React.FC = () => {
   const [activeTab, setActiveTab] = useState("women");
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasAnyBestsellers, setHasAnyBestsellers] = useState(true);
 
+  // Check if there are any bestsellers at all in the database to conditionally render section
   useEffect(() => {
     const productsRef = collection(db, "products");
-    const unsubscribe = onSnapshot(productsRef, (snapshot) => {
+    const q = query(productsRef, where("isBestseller", "==", true), limit(1));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setHasAnyBestsellers(!snapshot.empty);
+    }, (error) => {
+      console.error("Error checking bestsellers existence:", error);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Fetch bestsellers for active tab
+  useEffect(() => {
+    setLoading(true);
+    const productsRef = collection(db, "products");
+    const q = query(
+      productsRef,
+      where("isBestseller", "==", true),
+      where("gender", "==", activeTab),
+      orderBy("createdAt", "desc"),
+      limit(8)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const prods: any[] = [];
       snapshot.forEach((doc) => {
         prods.push({ id: doc.id, ...doc.data() });
       });
+      // Fallback sort
+      prods.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
       setProducts(prods);
       setLoading(false);
+    }, (error) => {
+      console.error("Error fetching bestsellers with orderBy (possible missing index):", error);
+      // Fallback query without orderBy to prevent app crash if composite index isn't ready/created yet
+      const fallbackQ = query(
+        productsRef,
+        where("isBestseller", "==", true),
+        where("gender", "==", activeTab)
+      );
+      onSnapshot(fallbackQ, (fallbackSnapshot) => {
+        const prods: any[] = [];
+        fallbackSnapshot.forEach((doc) => {
+          prods.push({ id: doc.id, ...doc.data() });
+        });
+        prods.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        setProducts(prods.slice(0, 8));
+        setLoading(false);
+      }, (fallbackError) => {
+        console.error("Fallback query failed:", fallbackError);
+        setLoading(false);
+      });
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [activeTab]);
 
-  // Filter products by gender matching active tab and isBestseller flag, sorted by newest first
-  const filteredProducts = products
-    .filter((product) => product.gender === activeTab && product.isBestseller === true)
-    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  const filteredProducts = products;
 
   if (loading) {
     return (
@@ -51,7 +93,7 @@ export const Bestsellers: React.FC = () => {
             ))}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-            {[...Array(4)].map((_, i) => (
+            {[...Array(8)].map((_, i) => (
               <div key={i} className="bg-zinc-200 rounded-2xl aspect-[3/4]" />
             ))}
           </div>
@@ -60,10 +102,9 @@ export const Bestsellers: React.FC = () => {
     );
   }
 
-  // If no bestseller products exist, check if we want to hide it
-  const hasBestsellers = products.some(p => p.isBestseller === true);
-  if (!hasBestsellers) {
-    return null; // Hide the entire Bestsellers section if there are no bestseller products in the database
+  // If no bestseller products exist in the database, hide the section
+  if (!hasAnyBestsellers) {
+    return null;
   }
 
   return (
