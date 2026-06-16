@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Save, Store, Mail, Phone, MapPin, Percent, Link as LinkIcon, Search, LayoutTemplate, FileText } from "lucide-react";
+import { Save, Store, Mail, Phone, MapPin, Link as LinkIcon, Search, LayoutTemplate, FileText } from "lucide-react";
 import { HeroSectionManager } from "@/components/admin/HeroSectionManager";
 import { InfluencerManager } from "@/components/admin/InfluencerManager";
 import { CustomerTestimonialsManager } from "@/components/admin/CustomerTestimonialsManager";
@@ -20,10 +20,10 @@ function SettingsContent() {
     contactEmail: "contact@elanoragems.com",
     whatsappNumber: "+91 9876543210",
     address: "123 Jewelry Lane, Mumbai, India",
-    shippingCharge: 100,
-    gstPercent: 3,
+
     instagram: "https://instagram.com/elanoragems",
     facebook: "https://facebook.com/elanoragems",
+    whatsapp: "https://wa.me/919876543210",
     seoTitle: "ElanoraGems | Luxury Handcrafted Jewelry",
     seoDescription: "Discover timeless elegance with ElanoraGems. Shop our exclusive collection of rings, necklaces, and earrings."
   });
@@ -62,13 +62,27 @@ function SettingsContent() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setSettings(prev => ({ 
-      ...prev, 
-      [name]: name === 'shippingCharge' || name === 'gstPercent' ? Number(value) : value 
+    setSettings(prev => ({
+      ...prev,
+      [name]: value
     }));
   };
 
   const handleSave = async () => {
+    // Validation
+    if (settings.facebook && !settings.facebook.trim().startsWith("https://facebook.com")) {
+      alert("Facebook URL must start with https://facebook.com");
+      return;
+    }
+    if (settings.instagram && !settings.instagram.trim().startsWith("https://instagram.com")) {
+      alert("Instagram URL must start with https://instagram.com");
+      return;
+    }
+    if (settings.whatsapp && !settings.whatsapp.trim().startsWith("https://wa.me/")) {
+      alert("WhatsApp URL must start with https://wa.me/");
+      return;
+    }
+
     setIsSaving(true);
     try {
       await setDoc(doc(db, "settings", "storeConfig"), settings, { merge: true });
@@ -89,7 +103,7 @@ function SettingsContent() {
           <p className="text-zinc-500 mt-1">Manage store settings and website configuration.</p>
         </div>
         {activeTab === "store" && (
-          <button 
+          <button
             onClick={handleSave}
             disabled={isSaving}
             className="bg-[#0F2F6B] text-white px-5 py-2.5 rounded-xl font-semibold flex items-center gap-2 hover:bg-blue-900 transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
@@ -104,25 +118,22 @@ function SettingsContent() {
       <div className="flex border-b border-zinc-200">
         <button
           onClick={() => handleTabChange("store")}
-          className={`px-6 py-3 font-bold text-sm border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${
-            activeTab === "store" ? "border-[#0F2F6B] text-[#0F2F6B]" : "border-transparent text-zinc-500 hover:text-zinc-700"
-          }`}
+          className={`px-6 py-3 font-bold text-sm border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${activeTab === "store" ? "border-[#0F2F6B] text-[#0F2F6B]" : "border-transparent text-zinc-500 hover:text-zinc-700"
+            }`}
         >
           <Store size={18} /> Store Settings
         </button>
         <button
           onClick={() => handleTabChange("site")}
-          className={`px-6 py-3 font-bold text-sm border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${
-            activeTab === "site" ? "border-[#0F2F6B] text-[#0F2F6B]" : "border-transparent text-zinc-500 hover:text-zinc-700"
-          }`}
+          className={`px-6 py-3 font-bold text-sm border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${activeTab === "site" ? "border-[#0F2F6B] text-[#0F2F6B]" : "border-transparent text-zinc-500 hover:text-zinc-700"
+            }`}
         >
           <LayoutTemplate size={18} /> Site Configuration
         </button>
         <button
           onClick={() => handleTabChange("policies")}
-          className={`px-6 py-3 font-bold text-sm border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${
-            activeTab === "policies" ? "border-[#0F2F6B] text-[#0F2F6B]" : "border-transparent text-zinc-500 hover:text-zinc-700"
-          }`}
+          className={`px-6 py-3 font-bold text-sm border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${activeTab === "policies" ? "border-[#0F2F6B] text-[#0F2F6B]" : "border-transparent text-zinc-500 hover:text-zinc-700"
+            }`}
         >
           <FileText size={18} /> Policies
         </button>
@@ -131,14 +142,14 @@ function SettingsContent() {
       {/* Tab 1: Store Settings */}
       {activeTab === "store" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
+
           {/* General Details */}
           <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-6 space-y-6">
             <div className="flex items-center gap-3 border-b border-zinc-100 pb-4">
               <Store size={20} className="text-[#0F2F6B]" />
               <h2 className="text-lg font-bold text-[#0F2F6B]">General Info</h2>
             </div>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-bold text-zinc-500 uppercase block mb-1">Store Name</label>
@@ -160,7 +171,7 @@ function SettingsContent() {
               <Mail size={20} className="text-[#0F2F6B]" />
               <h2 className="text-lg font-bold text-[#0F2F6B]">Contact Details</h2>
             </div>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-bold text-zinc-500 uppercase block mb-1">Support Email</label>
@@ -179,32 +190,13 @@ function SettingsContent() {
             </div>
           </div>
 
-          {/* E-commerce Configurations */}
-          <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-6 space-y-6">
-            <div className="flex items-center gap-3 border-b border-zinc-100 pb-4">
-              <Percent size={20} className="text-[#0F2F6B]" />
-              <h2 className="text-lg font-bold text-[#0F2F6B]">Store Config</h2>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-bold text-zinc-500 uppercase block mb-1">Flat Shipping (₹)</label>
-                <input type="number" name="shippingCharge" value={settings.shippingCharge} onChange={handleChange} className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#0F2F6B] focus:ring-1 focus:ring-[#0F2F6B]" />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-zinc-500 uppercase block mb-1">GST (%)</label>
-                <input type="number" name="gstPercent" value={settings.gstPercent} onChange={handleChange} className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#0F2F6B] focus:ring-1 focus:ring-[#0F2F6B]" />
-              </div>
-            </div>
-          </div>
-
           {/* SEO Defaults */}
           <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-6 space-y-6">
             <div className="flex items-center gap-3 border-b border-zinc-100 pb-4">
               <Search size={20} className="text-[#0F2F6B]" />
               <h2 className="text-lg font-bold text-[#0F2F6B]">SEO Default Tags</h2>
             </div>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-bold text-zinc-500 uppercase block mb-1">SEO Title</label>
@@ -223,15 +215,19 @@ function SettingsContent() {
               <LinkIcon size={20} className="text-[#0F2F6B]" />
               <h2 className="text-lg font-bold text-[#0F2F6B]">Social Media Links</h2>
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="text-xs font-bold text-zinc-500 uppercase block mb-1">Instagram URL</label>
-                <input type="url" name="instagram" value={settings.instagram} onChange={handleChange} className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#0F2F6B] focus:ring-1 focus:ring-[#0F2F6B]" />
-              </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <label className="text-xs font-bold text-zinc-500 uppercase block mb-1">Facebook URL</label>
-                <input type="url" name="facebook" value={settings.facebook} onChange={handleChange} className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#0F2F6B] focus:ring-1 focus:ring-[#0F2F6B]" />
+                <input type="url" name="facebook" value={settings.facebook || ""} onChange={handleChange} className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#0F2F6B] focus:ring-1 focus:ring-[#0F2F6B]" placeholder="https://facebook.com/..." />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-zinc-500 uppercase block mb-1">Instagram URL</label>
+                <input type="url" name="instagram" value={settings.instagram || ""} onChange={handleChange} className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#0F2F6B] focus:ring-1 focus:ring-[#0F2F6B]" placeholder="https://instagram.com/..." />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-zinc-500 uppercase block mb-1">WhatsApp URL</label>
+                <input type="url" name="whatsapp" value={settings.whatsapp || ""} onChange={handleChange} className="w-full px-4 py-2.5 border border-zinc-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#0F2F6B] focus:ring-1 focus:ring-[#0F2F6B]" placeholder="https://wa.me/..." />
               </div>
             </div>
           </div>
@@ -242,7 +238,7 @@ function SettingsContent() {
       {/* Tab 2: Site Configuration */}
       {activeTab === "site" && (
         <div className="space-y-8">
-          
+
           <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-6">
             <HeroSectionManager />
           </div>

@@ -10,7 +10,7 @@ import {
   PackageSearch,
   Tags,
   ShoppingCart,
-  Gift,
+
   TicketPercent,
   Users,
   Bell,
@@ -39,7 +39,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "Manage Reviews", href: "/admin/reviews", icon: MessageSquare },
     { name: "Categories", href: "/admin/categories", icon: Tags },
     { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
-    { name: "Gift Sets", href: "/admin/gift-sets", icon: Gift },
+
     { name: "Coupons", href: "/admin/coupons", icon: TicketPercent },
     { name: "Users", href: "/admin/users", icon: Users },
     { name: "Subscribers", href: "/admin/subscribers", icon: Mail },
