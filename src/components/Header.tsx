@@ -266,9 +266,6 @@ export const Header: React.FC = () => {
               aria-label="User Account"
             >
               <User size={22} />
-              <span className="hidden sm:inline text-xs font-semibold uppercase tracking-wider text-zinc-600 max-w-[100px] truncate">
-                {user ? "My Account" : "Login"}
-              </span>
             </Link>
 
             {/* Wishlist Link */}

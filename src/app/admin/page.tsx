@@ -3,13 +3,12 @@
 import React, { useEffect, useState } from "react";
 import { collection, onSnapshot, query, getCountFromServer } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { 
-  Package, 
-  ShoppingBag, 
-  Clock, 
-  IndianRupee, 
-  Users, 
-  Gift,
+import {
+  Package,
+  ShoppingBag,
+  Clock,
+  IndianRupee,
+  Users,
   TrendingUp
 } from "lucide-react";
 
@@ -20,7 +19,6 @@ export default function AdminDashboardPage() {
     pendingOrders: 0,
     revenue: 0,
     totalUsers: 0,
-    totalGiftSets: 0,
     activeProducts: 0,
   });
 
@@ -29,19 +27,19 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     // This is a simplified fetching logic for demonstration
     // Ideally you would use onSnapshot for live counts or cloud functions
-    
+
     // 1. Live Orders Listener
     const ordersRef = collection(db, "orders");
     const unsubscribeOrders = onSnapshot(ordersRef, (snapshot) => {
       let revenue = 0;
       let pendingCount = 0;
       const ordersData: any[] = [];
-      
+
       snapshot.forEach(doc => {
         const data = doc.data();
         revenue += data.totalAmount || 0;
         if (data.status === "pending" || data.status === "processing") pendingCount++;
-        
+
         ordersData.push({ id: doc.id, ...data });
       });
 
@@ -52,21 +50,21 @@ export default function AdminDashboardPage() {
         return dateB - dateA;
       });
 
-      setStats(prev => ({ 
-        ...prev, 
+      setStats(prev => ({
+        ...prev,
         totalOrders: snapshot.size,
         pendingOrders: pendingCount,
         revenue: revenue
       }));
-      
+
       setRecentOrders(ordersData.slice(0, 5));
     });
 
     // 2. Live Products Listener
     const productsRef = collection(db, "products");
     const unsubscribeProducts = onSnapshot(productsRef, (snapshot) => {
-      setStats(prev => ({ 
-        ...prev, 
+      setStats(prev => ({
+        ...prev,
         totalProducts: snapshot.size,
         activeProducts: snapshot.size // Assuming all are active for now
       }));
@@ -78,17 +76,10 @@ export default function AdminDashboardPage() {
       setStats(prev => ({ ...prev, totalUsers: snapshot.size }));
     });
 
-    // 4. Live Gift Sets Listener
-    const giftSetsRef = collection(db, "giftSets");
-    const unsubscribeGiftSets = onSnapshot(giftSetsRef, (snapshot) => {
-      setStats(prev => ({ ...prev, totalGiftSets: snapshot.size }));
-    });
-
     return () => {
       unsubscribeOrders();
       unsubscribeProducts();
       unsubscribeUsers();
-      unsubscribeGiftSets();
     };
   }, []);
 
@@ -98,7 +89,6 @@ export default function AdminDashboardPage() {
     { title: "Pending Orders", value: stats.pendingOrders, icon: Clock, color: "bg-amber-50 text-amber-600" },
     { title: "Total Revenue", value: `₹${stats.revenue.toLocaleString()}`, icon: IndianRupee, color: "bg-emerald-50 text-emerald-600" },
     { title: "Total Users", value: stats.totalUsers, icon: Users, color: "bg-indigo-50 text-indigo-600" },
-    { title: "Gift Sets", value: stats.totalGiftSets, icon: Gift, color: "bg-pink-50 text-pink-600" },
   ];
 
   const getStatusColor = (status: string) => {
@@ -115,7 +105,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-8 pb-8">
-      
+
       {/* Header Section */}
       <div>
         <h1 className="text-2xl font-bold text-[#0F2F6B]">Dashboard Overview</h1>
@@ -142,7 +132,7 @@ export default function AdminDashboardPage() {
 
       {/* Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
+
         {/* Recent Orders Table */}
         <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-zinc-100 overflow-hidden">
           <div className="p-6 border-b border-zinc-100 flex justify-between items-center">
@@ -188,7 +178,7 @@ export default function AdminDashboardPage() {
         {/* Growth Insights */}
         <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-6 space-y-6">
           <h2 className="text-lg font-bold text-[#0F2F6B]">Growth Insights</h2>
-          
+
           <div className="space-y-4">
             <div className="flex items-center justify-between p-4 bg-zinc-50 rounded-xl border border-zinc-100">
               <div className="flex items-center gap-3">
@@ -210,18 +200,6 @@ export default function AdminDashboardPage() {
                 <div>
                   <p className="text-xs font-semibold text-zinc-500 uppercase">Active Orders</p>
                   <p className="font-bold text-[#0F2F6B]">You have {stats.pendingOrders} active orders</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-zinc-50 rounded-xl border border-zinc-100">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-pink-100 text-pink-600 flex items-center justify-center">
-                  <Gift size={20} />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-zinc-500 uppercase">Active Gift Sets</p>
-                  <p className="font-bold text-[#0F2F6B]">You have {stats.totalGiftSets} active gift sets</p>
                 </div>
               </div>
             </div>
