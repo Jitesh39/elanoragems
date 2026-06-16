@@ -273,10 +273,33 @@ export default function ManageProductsPage() {
       if (editingId) {
         await updateDoc(doc(db, "products", editingId), productData);
       } else {
-        await addDoc(collection(db, "products"), {
+        const docRef = await addDoc(collection(db, "products"), {
           ...productData,
           createdAt: new Date().toISOString()
         });
+
+        // Trigger email notification to all active subscribers after successful database save
+        try {
+          const categoryName = dbCategories.find(c => c.slug === productData.category || c.id === productData.category)?.name || productData.category;
+          const emailPayload = {
+            name: productData.name,
+            price: productData.price,
+            category: categoryName,
+            description: productData.description,
+            image: productData.image,
+            slug: productData.slug
+          };
+
+          await fetch("/api/send-newsletter", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ product: emailPayload })
+          });
+        } catch (emailErr) {
+          console.error("Failed to trigger newsletter broadcast:", emailErr);
+        }
       }
 
       resetForm();

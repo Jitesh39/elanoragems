@@ -1,21 +1,22 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { CartDrawer } from "@/components/CartDrawer";
 import Link from "next/link";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import {
   Mail,
   User,
   MessageSquare,
   Send,
-  Building,
   CheckCircle,
   AlertCircle,
   Loader2,
-  Clock,
-  MapPin
+  MapPin,
+  Phone
 } from "lucide-react";
 
 export default function ContactPage() {
@@ -28,6 +29,30 @@ export default function ContactPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const [storeInfo, setStoreInfo] = useState({
+    contactEmail: "Not Available",
+    whatsappNumber: "Not Available",
+    address: "Not Available"
+  });
+
+  useEffect(() => {
+    const docRef = doc(db, "settings", "storeConfig");
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setStoreInfo({
+          contactEmail: data.contactEmail || "Not Available",
+          whatsappNumber: data.whatsappNumber || "Not Available",
+          address: data.address || "Not Available"
+        });
+      }
+    }, (error) => {
+      console.error("Error fetching store config:", error);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Email format validation
   const validateEmail = (emailStr: string) => {
@@ -124,17 +149,6 @@ export default function ContactPage() {
               </h2>
 
               <div className="space-y-4">
-                {/* Brand */}
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-white border border-zinc-150 flex items-center justify-center text-secondary shrink-0">
-                    <Building size={18} />
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Business Name</h3>
-                    <p className="text-primary font-bold text-sm sm:text-base">ElanoraGems</p>
-                  </div>
-                </div>
-
                 {/* Email */}
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 rounded-xl bg-white border border-zinc-150 flex items-center justify-center text-secondary shrink-0">
@@ -142,30 +156,44 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Email Address</h3>
-                    <a
-                      href="mailto:gemselanora@gmail.com"
-                      className="text-primary hover:text-secondary font-bold text-sm sm:text-base transition-colors"
-                    >
-                      gemselanora@gmail.com
-                    </a>
+                    {storeInfo.contactEmail !== "Not Available" ? (
+                      <a
+                        href={`mailto:${storeInfo.contactEmail}`}
+                        className="text-primary hover:text-secondary font-bold text-sm sm:text-base transition-colors"
+                      >
+                        {storeInfo.contactEmail}
+                      </a>
+                    ) : (
+                      <p className="text-zinc-600 font-semibold text-xs sm:text-sm normal-case">
+                        Not Available
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                {/* Support Hours */}
+                {/* Contact Number */}
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 rounded-xl bg-white border border-zinc-150 flex items-center justify-center text-secondary shrink-0">
-                    <Clock size={18} />
+                    <Phone size={18} />
                   </div>
                   <div>
-                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Support Hours</h3>
-                    <p className="text-zinc-600 font-semibold text-xs sm:text-sm leading-relaxed normal-case">
-                      Monday to Saturday: 10:00 AM – 6:00 PM IST<br />
-                      Closed on Sundays & Public Holidays
-                    </p>
+                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Contact Number</h3>
+                    {storeInfo.whatsappNumber !== "Not Available" ? (
+                      <a
+                        href={`tel:${storeInfo.whatsappNumber}`}
+                        className="text-primary hover:text-secondary font-bold text-sm sm:text-base transition-colors"
+                      >
+                        {storeInfo.whatsappNumber}
+                      </a>
+                    ) : (
+                      <p className="text-zinc-600 font-semibold text-xs sm:text-sm normal-case">
+                        Not Available
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                {/* Origin */}
+                {/* Location */}
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 rounded-xl bg-white border border-zinc-150 flex items-center justify-center text-secondary shrink-0">
                     <MapPin size={18} />
@@ -173,7 +201,7 @@ export default function ContactPage() {
                   <div>
                     <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Location</h3>
                     <p className="text-zinc-600 font-semibold text-xs sm:text-sm normal-case">
-                      Mumbai, Maharashtra, India
+                      {storeInfo.address}
                     </p>
                   </div>
                 </div>

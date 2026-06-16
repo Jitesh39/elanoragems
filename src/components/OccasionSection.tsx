@@ -31,11 +31,6 @@ const OCCASIONS = [
     title: "Party Wear",
     slug: "party",
     image: "/occasion_party.png"
-  },
-  {
-    title: "Gift Collection",
-    slug: "gift",
-    image: "/occasion_gift.png"
   }
 ];
 

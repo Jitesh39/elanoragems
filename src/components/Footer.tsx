@@ -1,8 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { MessageSquare, ShieldCheck, Mail, Phone, MapPin } from "lucide-react";
+import { doc, onSnapshot, collection } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { Newsletter } from "./Newsletter";
 
 const Facebook = ({ size = 24 }: { size?: number }) => (
   <svg viewBox="0 0 24 24" width={size} height={size} stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
@@ -25,8 +28,57 @@ const Twitter = ({ size = 24 }: { size?: number }) => (
 );
 
 export const Footer: React.FC = () => {
+  const [storeInfo, setStoreInfo] = useState({
+    contactEmail: "Email Not Available",
+    whatsappNumber: "Contact Not Available",
+    address: "Location Not Available"
+  });
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loadingCats, setLoadingCats] = useState(true);
+
+  useEffect(() => {
+    const docRef = doc(db, "settings", "storeConfig");
+    const unsubscribeStore = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setStoreInfo({
+          contactEmail: data.contactEmail || "Email Not Available",
+          whatsappNumber: data.whatsappNumber || "Contact Not Available",
+          address: data.address || "Location Not Available"
+        });
+      }
+    }, (error) => {
+      console.error("Error fetching store config for footer:", error);
+    });
+
+    const categoriesRef = collection(db, "categories");
+    const unsubscribeCats = onSnapshot(categoriesRef, (snapshot) => {
+      const cats: any[] = [];
+      snapshot.forEach((doc) => {
+        cats.push({ id: doc.id, ...doc.data() });
+      });
+      setCategories(cats);
+      setLoadingCats(false);
+    }, (error) => {
+      console.error("Error fetching categories for footer:", error);
+      setLoadingCats(false);
+    });
+
+    return () => {
+      unsubscribeStore();
+      unsubscribeCats();
+    };
+  }, []);
+
+  const activeCategories = categories.filter(cat => cat.isActive !== false);
+  const sortedCategories = [...activeCategories]
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+    .slice(0, 5);
+
   return (
-    <footer className="bg-primary text-white pt-16 pb-8 border-t border-secondary/20">
+    <>
+      <Newsletter />
+      <footer className="bg-primary text-white pt-16 pb-8 border-t border-secondary/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
 
         {/* Column 1: Brand Info */}
@@ -52,15 +104,23 @@ export const Footer: React.FC = () => {
           </div>
         </div>
 
-        {/* Column 2: Shop Links */}
+        {/* Column 2: Shop Categories */}
         <div>
-          <h4 className="font-serif text-secondary text-sm font-bold tracking-widest uppercase mb-4">Shop Collections</h4>
+          <h4 className="font-serif text-secondary text-sm font-bold tracking-widest uppercase mb-4">Shop Categories</h4>
           <ul className="space-y-2.5 text-xs text-zinc-300 font-medium">
-            <li><Link href="/collections?category=rings" className="hover:text-secondary transition-colors">Silver Rings</Link></li>
-            <li><Link href="/collections?category=earrings" className="hover:text-secondary transition-colors">Exquisite Earrings</Link></li>
-            <li><Link href="/collections?category=necklaces" className="hover:text-secondary transition-colors">Gold Plated Necklaces</Link></li>
-            <li><Link href="/collections?category=bracelets" className="hover:text-secondary transition-colors">Bracelets & Anklets</Link></li>
-            <li><Link href="/collections?category=gift-sets" className="hover:text-secondary transition-colors">Gift Box Sets</Link></li>
+            {loadingCats ? (
+              <li className="text-zinc-500">Loading categories...</li>
+            ) : sortedCategories.length > 0 ? (
+              sortedCategories.map((cat) => (
+                <li key={cat.id}>
+                  <Link href={`/category/${cat.slug || cat.id}`} className="hover:text-secondary transition-colors">
+                    {cat.name}
+                  </Link>
+                </li>
+              ))
+            ) : (
+              <li className="text-zinc-500 italic">No categories available</li>
+            )}
           </ul>
         </div>
 
@@ -101,31 +161,51 @@ export const Footer: React.FC = () => {
           <h4 className="font-serif text-secondary text-sm font-bold tracking-widest uppercase mb-4">Contact Us</h4>
           <div className="flex gap-2 text-xs text-zinc-300">
             <MapPin size={16} className="text-secondary flex-shrink-0" />
-            <span></span>
+            {storeInfo.address !== "Location Not Available" ? (
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeInfo.address)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-secondary transition-colors leading-normal"
+              >
+                {storeInfo.address}
+              </a>
+            ) : (
+              <span>Location Not Available</span>
+            )}
           </div>
           <div className="flex gap-2 text-xs text-zinc-300">
             <Phone size={16} className="text-secondary flex-shrink-0" />
-            <span> </span>
+            {storeInfo.whatsappNumber !== "Contact Not Available" ? (
+              <a href={`tel:${storeInfo.whatsappNumber}`} className="hover:text-secondary transition-colors">
+                {storeInfo.whatsappNumber}
+              </a>
+            ) : (
+              <span>Contact Not Available</span>
+            )}
           </div>
           <div className="flex gap-2 text-xs text-zinc-300">
             <Mail size={16} className="text-secondary flex-shrink-0" />
-            <span>gemselanora@gmail.com</span>
+            {storeInfo.contactEmail !== "Email Not Available" ? (
+              <a href={`mailto:${storeInfo.contactEmail}`} className="hover:text-secondary transition-colors">
+                {storeInfo.contactEmail}
+              </a>
+            ) : (
+              <span>Email Not Available</span>
+            )}
           </div>
         </div>
 
       </div>
 
       {/* Footer Bottom Area */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-white/10 mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-400">
-        <div className="flex items-center gap-2">
-          <ShieldCheck size={16} className="text-secondary" />
-          <span>100% Safe & Secure Checkout. Trusted by over 10,000+ customers.</span>
-        </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-white/10 mt-12 pt-8 text-center text-xs text-zinc-400">
         <div>
-          &copy; {new Date().getFullYear()} ElanoraGems . All rights reserved.
+          &copy; 2026 ElanoraGems. All rights reserved.
         </div>
       </div>
-    </footer>
+      </footer>
+    </>
   );
 };
 export default Footer;

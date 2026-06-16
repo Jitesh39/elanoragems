@@ -358,7 +358,7 @@ function CheckoutContent() {
                       <input type="radio" name="payment" value="card" checked={paymentMethod === "card"} onChange={() => setPaymentMethod("card")} className="accent-secondary" />
                       <div>
                         <span className="text-xs font-bold text-primary uppercase block">Credit / Debit Card</span>
-                        <span className="text-[10px] text-zinc-400 normal-case">Visa, Mastercard, RuPay cards accepted.</span>
+                        <span className="text-[10px] text-zinc-400 normal-case">RuPay, Visa, Mastercard cards accepted.</span>
                       </div>
                     </div>
                     <CreditCard size={18} className="text-secondary" />

@@ -74,9 +74,7 @@ export const Header: React.FC = () => {
     };
   }, []);
 
-  // Account dropdown state
-  const [accountOpen, setAccountOpen] = useState(false);
-  const accountRef = useRef<HTMLDivElement>(null);
+
 
   // Helper to count products dynamically for a category
   const getProductCount = (categorySlugOrId: string) => {
@@ -126,9 +124,6 @@ export const Header: React.FC = () => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
         setSearchFocused(false);
-      }
-      if (accountRef.current && !accountRef.current.contains(event.target as Node)) {
-        setAccountOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -264,70 +259,17 @@ export const Header: React.FC = () => {
               <Search size={22} />
             </button>
 
-            {/* Profile Dropdown */}
-            <div ref={accountRef} className="relative">
-              <button
-                onClick={() => setAccountOpen(!accountOpen)}
-                className="text-dark hover:text-secondary transition-colors flex items-center gap-1 py-1"
-                aria-label="User Account"
-              >
-                <User size={22} />
-                <span className="hidden sm:inline text-xs font-semibold uppercase tracking-wider text-zinc-600 max-w-[80px] truncate">
-                  {user ? user.displayName.split(" ")[0] : "Login"}
-                </span>
-              </button>
-
-              <AnimatePresence>
-                {accountOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute right-0 mt-2 w-48 bg-white border border-zinc-100 rounded-md shadow-lg py-1 z-50 text-sm"
-                  >
-                    {user ? (
-                      <>
-                        <div className="px-4 py-2 border-b border-zinc-100 font-medium text-dark">
-                          Hi, {user.displayName}
-                        </div>
-                        {user.role === "admin" && (
-                          <Link href="/admin" className="block px-4 py-2 text-primary hover:bg-accent hover:text-secondary font-medium">
-                            Admin Dashboard
-                          </Link>
-                        )}
-                        <Link href="/account" className="block px-4 py-2 text-zinc-700 hover:bg-accent">
-                          My Account
-                        </Link>
-                        <Link href="/account?tab=orders" className="block px-4 py-2 text-zinc-700 hover:bg-accent">
-                          My Orders
-                        </Link>
-                        <Link href="/wishlist" className="block px-4 py-2 text-zinc-700 hover:bg-accent">
-                          My Wishlist
-                        </Link>
-                        <button
-                          onClick={async () => {
-                            await logout();
-                            setAccountOpen(false);
-                          }}
-                          className="w-full text-left block px-4 py-2 text-red-600 hover:bg-red-50 border-t border-zinc-100"
-                        >
-                          Logout
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <Link href="/login" className="block px-4 py-2 text-zinc-700 hover:bg-accent font-medium">
-                          Log In
-                        </Link>
-                        <Link href="/login?tab=signup" className="block px-4 py-2 text-zinc-700 hover:bg-accent">
-                          Sign Up
-                        </Link>
-                      </>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+            {/* Profile Link */}
+            <Link
+              href={user ? "/account" : "/login"}
+              className="text-dark hover:text-secondary transition-colors flex items-center gap-1 py-1"
+              aria-label="User Account"
+            >
+              <User size={22} />
+              <span className="hidden sm:inline text-xs font-semibold uppercase tracking-wider text-zinc-600 max-w-[100px] truncate">
+                {user ? "My Account" : "Login"}
+              </span>
+            </Link>
 
             {/* Wishlist Link */}
             <Link href="/wishlist" className="text-dark hover:text-secondary transition-colors relative py-1" aria-label="Wishlist">
@@ -493,9 +435,7 @@ export const Header: React.FC = () => {
                 <div className="absolute top-full right-0 w-48 bg-white border border-zinc-100 shadow-xl rounded-b-lg p-3 opacity-0 translate-y-3 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 z-50">
                   <ul className="space-y-2 text-xs font-semibold text-zinc-600">
                     <li><Link href="/about" className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">Our Story</Link></li>
-                    <li><Link href="/craftsmanship" className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">Craftsmanship</Link></li>
-                    <li><Link href="/virtual-try-on" className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">Virtual Try-On</Link></li>
-                    <li><Link href="/stores" className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">Store Locator</Link></li>
+                    <li><Link href="/contact" className="block p-2 hover:bg-accent hover:text-primary rounded-md transition-colors">Contact Us</Link></li>
                   </ul>
                 </div>
               </li>
@@ -553,15 +493,15 @@ export const Header: React.FC = () => {
                         dbCategories.map((cat) => {
                           const productCount = getProductCount(cat.slug || cat.id);
                           return (
-                            <Link 
-                              key={cat.id} 
-                              href={`/collections/${cat.slug || cat.id}`} 
+                            <Link
+                              key={cat.id}
+                              href={`/collections/${cat.slug || cat.id}`}
                               className="flex items-center gap-3 p-2 hover:bg-accent rounded-xl border border-zinc-100/50 hover:border-secondary/20 transition-all"
                             >
-                              <img 
-                                src={cat.imageUrl || cat.image || "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=100&q=80"} 
-                                alt={cat.name} 
-                                className="w-10 h-10 object-cover rounded-lg border border-zinc-150" 
+                              <img
+                                src={cat.imageUrl || cat.image || "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=100&q=80"}
+                                alt={cat.name}
+                                className="w-10 h-10 object-cover rounded-lg border border-zinc-150"
                               />
                               <div className="flex-1 min-w-0">
                                 <div className="text-xs font-bold text-primary uppercase tracking-wide truncate">{cat.name}</div>
@@ -659,25 +599,6 @@ export const Header: React.FC = () => {
                   )}
                 </div>
 
-                {/* Divine & Gifting Accordion */}
-                <div>
-                  <button
-                    onClick={() => toggleMobileAccordion("gifting")}
-                    className="w-full flex items-center justify-between py-2 text-left hover:text-secondary transition-colors"
-                  >
-                    <span>Divine & Gifting</span>
-                    <ChevronDown size={16} className={`transform transition-transform text-zinc-400 ${mobileActiveAccordion === "gifting" ? "rotate-180" : ""}`} />
-                  </button>
-                  {mobileActiveAccordion === "gifting" && (
-                    <div className="pl-4 mt-1 space-y-1 text-sm font-normal text-zinc-500">
-                      <Link href="/collections?category=gift-sets" className="block py-1.5 hover:text-secondary transition-colors">Gift Sets</Link>
-                      <Link href="/collections?price=999" className="block py-1.5 hover:text-secondary transition-colors">Gifts under ₹999</Link>
-                      <Link href="/collections?price=1999" className="block py-1.5 hover:text-secondary transition-colors">Gifts under ₹1999</Link>
-                      <Link href="/collections?price=2999" className="block py-1.5 hover:text-secondary transition-colors">Gifts under ₹2999</Link>
-                    </div>
-                  )}
-                </div>
-
                 {/* Explore Elanora Accordion */}
                 <div>
                   <button
@@ -690,9 +611,7 @@ export const Header: React.FC = () => {
                   {mobileActiveAccordion === "explore" && (
                     <div className="pl-4 mt-1 space-y-1 text-sm font-normal text-zinc-500">
                       <Link href="/about" className="block py-1.5 hover:text-secondary transition-colors">Our Story</Link>
-                      <Link href="/craftsmanship" className="block py-1.5 hover:text-secondary transition-colors">Craftsmanship</Link>
-                      <Link href="/virtual-try-on" className="block py-1.5 hover:text-secondary transition-colors">Virtual Try-On</Link>
-                      <Link href="/stores" className="block py-1.5 hover:text-secondary transition-colors">Store Locator</Link>
+                      <Link href="/contact" className="block py-1.5 hover:text-secondary transition-colors">Contact Us</Link>
                     </div>
                   )}
                 </div>

@@ -21,7 +21,8 @@ import {
   Menu,
   X,
   MessageSquare,
-  FileText
+  FileText,
+  Mail
 } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -36,12 +37,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
     { name: "Manage Products", href: "/admin/products", icon: PackageSearch },
     { name: "Manage Reviews", href: "/admin/reviews", icon: MessageSquare },
-    { name: "Policies CMS", href: "/admin/content/policies", icon: FileText },
     { name: "Categories", href: "/admin/categories", icon: Tags },
     { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
     { name: "Gift Sets", href: "/admin/gift-sets", icon: Gift },
     { name: "Coupons", href: "/admin/coupons", icon: TicketPercent },
     { name: "Users", href: "/admin/users", icon: Users },
+    { name: "Subscribers", href: "/admin/subscribers", icon: Mail },
     { name: "Notifications", href: "/admin/notifications", icon: Bell },
     { name: "Analytics", href: "/admin/analytics", icon: LineChart },
     { name: "Settings", href: "/admin/settings", icon: Settings },

@@ -1,15 +1,19 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Save, Store, Mail, Phone, MapPin, Percent, Link as LinkIcon, Search, LayoutTemplate } from "lucide-react";
+import { Save, Store, Mail, Phone, MapPin, Percent, Link as LinkIcon, Search, LayoutTemplate, FileText } from "lucide-react";
 import { HeroSectionManager } from "@/components/admin/HeroSectionManager";
 import { InfluencerManager } from "@/components/admin/InfluencerManager";
 import { CustomerTestimonialsManager } from "@/components/admin/CustomerTestimonialsManager";
+import { PoliciesManager } from "@/components/admin/PoliciesManager";
 
-export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<"store" | "site">("store");
+function SettingsContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<"store" | "site" | "policies">("store");
 
   const [settings, setSettings] = useState({
     storeName: "ElanoraGems",
@@ -24,6 +28,26 @@ export default function SettingsPage() {
     seoDescription: "Discover timeless elegance with ElanoraGems. Shop our exclusive collection of rings, necklaces, and earrings."
   });
   const [isSaving, setIsSaving] = useState(false);
+
+  // Sync tab with URL queries if available (e.g. ?tab=policies)
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam === "policies") {
+      setActiveTab("policies");
+    } else if (tabParam === "site") {
+      setActiveTab("site");
+    } else {
+      setActiveTab("store");
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (tab: "store" | "site" | "policies") => {
+    setActiveTab(tab);
+    // Update URL search params without triggering full reload
+    const params = new URLSearchParams(window.location.search);
+    params.set("tab", tab);
+    router.replace(`/admin/settings?${params.toString()}`);
+  };
 
   useEffect(() => {
     const docRef = doc(db, "settings", "storeConfig");
@@ -68,7 +92,7 @@ export default function SettingsPage() {
           <button 
             onClick={handleSave}
             disabled={isSaving}
-            className="bg-[#0F2F6B] text-white px-5 py-2.5 rounded-xl font-semibold flex items-center gap-2 hover:bg-blue-900 transition-colors shadow-sm disabled:opacity-50"
+            className="bg-[#0F2F6B] text-white px-5 py-2.5 rounded-xl font-semibold flex items-center gap-2 hover:bg-blue-900 transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
           >
             <Save size={20} className="text-[#D4AF37]" />
             {isSaving ? "Saving..." : "Save Store Settings"}
@@ -79,20 +103,28 @@ export default function SettingsPage() {
       {/* Tabs */}
       <div className="flex border-b border-zinc-200">
         <button
-          onClick={() => setActiveTab("store")}
-          className={`px-6 py-3 font-bold text-sm border-b-2 transition-colors flex items-center gap-2 ${
+          onClick={() => handleTabChange("store")}
+          className={`px-6 py-3 font-bold text-sm border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${
             activeTab === "store" ? "border-[#0F2F6B] text-[#0F2F6B]" : "border-transparent text-zinc-500 hover:text-zinc-700"
           }`}
         >
           <Store size={18} /> Store Settings
         </button>
         <button
-          onClick={() => setActiveTab("site")}
-          className={`px-6 py-3 font-bold text-sm border-b-2 transition-colors flex items-center gap-2 ${
+          onClick={() => handleTabChange("site")}
+          className={`px-6 py-3 font-bold text-sm border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${
             activeTab === "site" ? "border-[#0F2F6B] text-[#0F2F6B]" : "border-transparent text-zinc-500 hover:text-zinc-700"
           }`}
         >
           <LayoutTemplate size={18} /> Site Configuration
+        </button>
+        <button
+          onClick={() => handleTabChange("policies")}
+          className={`px-6 py-3 font-bold text-sm border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${
+            activeTab === "policies" ? "border-[#0F2F6B] text-[#0F2F6B]" : "border-transparent text-zinc-500 hover:text-zinc-700"
+          }`}
+        >
+          <FileText size={18} /> Policies
         </button>
       </div>
 
@@ -226,6 +258,24 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {/* Tab 3: Policies */}
+      {activeTab === "policies" && (
+        <PoliciesManager />
+      )}
+
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center py-20 bg-white border border-zinc-100 rounded-2xl shadow-sm">
+        <div className="w-10 h-10 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-zinc-500 text-xs font-semibold uppercase tracking-wider">Loading Settings Control...</p>
+      </div>
+    }>
+      <SettingsContent />
+    </Suspense>
   );
 }
