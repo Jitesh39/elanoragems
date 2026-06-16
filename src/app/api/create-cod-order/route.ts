@@ -253,19 +253,35 @@ export async function POST(req: NextRequest) {
 
     // 7. Save validated COD order to Firestore
     const finalOrderObject = {
-      userId: userId || "guest",
+      orderId: orderNumber,
       orderNumber: orderNumber,
-      products: resolvedItems,
+      userId: userId || "guest",
+      userEmail: customerEmail || "",
+      customerName: customerName || shippingAddress.fullName || "",
+      customerPhone: shippingAddress.phone || "",
       shippingAddress: shippingAddress,
+      products: resolvedItems.map((item: any) => ({
+        productId: item.productId,
+        productName: item.name,
+        productImage: item.image,
+        quantity: item.quantity,
+        price: item.price,
+        // Compatibility keys:
+        name: item.name,
+        image: item.image,
+        material: item.material || ""
+      })),
       subtotal: Number(subtotal),
-      shipping: Number(shippingFee),
+      shippingFee: Number(shippingFee),
+      shipping: Number(shippingFee), // compatibility
       discount: Number(discount),
       codCharge: Number(deliveryConfig.codCharge),
-      total: Number(finalTotal),
+      totalAmount: Number(finalTotal),
+      total: Number(finalTotal), // compatibility
       paymentMethod: "COD",
       paymentStatus: "Pending",
-      createdAt: serverTimestamp(),
-      orderStatus: "confirmed"
+      orderStatus: "Confirmed",
+      createdAt: serverTimestamp()
     };
 
     await setDoc(doc(db, "orders", orderNumber), finalOrderObject);

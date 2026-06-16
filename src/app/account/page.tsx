@@ -64,10 +64,10 @@ function AccountDashboardContent() {
 
   // Fetch real orders from Firestore
   useEffect(() => {
-    if (!user?.email) return;
+    if (!user?.uid) return;
 
     const ordersRef = collection(db, "orders");
-    const q = query(ordersRef, where("customerEmail", "==", user.email));
+    const q = query(ordersRef, where("userId", "==", user.uid));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedOrders: any[] = [];
@@ -90,7 +90,7 @@ function AccountDashboardContent() {
     });
 
     return () => unsubscribe();
-  }, [user?.email]);
+  }, [user?.uid]);
 
   if (loading || !user) {
     return (
@@ -285,7 +285,7 @@ function AccountDashboardContent() {
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between justify-center gap-2 border-b border-zinc-100 pb-3">
                           <div>
                             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Order ID</span>
-                            <span className="font-bold text-primary text-sm">{order.orderNumber || order.id}</span>
+                            <span className="font-bold text-primary text-sm">{order.orderNumber || order.orderId || order.id}</span>
                             {order.paymentMethod && (
                               <span className="text-[9px] text-zinc-400 font-bold block mt-0.5">
                                 Method: {order.paymentMethod} {order.razorpayPaymentId ? `(${order.razorpayPaymentId})` : ""}
@@ -306,18 +306,28 @@ function AccountDashboardContent() {
                           </div>
                         </div>
 
-                        {/* Items */}
-                        <div className="space-y-2">
-                          {order.products && order.products.map((item: any, index: number) => (
-                            <div key={index} className="flex justify-between items-center text-xs">
-                              <span className="font-semibold text-zinc-700">{item.name} x{item.quantity}</span>
-                              <span className="font-bold text-primary">₹{(item.price * item.quantity).toLocaleString()}</span>
-                            </div>
-                          ))}
-                          {order.items && !order.products && order.items.map((item: any, index: number) => (
-                            <div key={index} className="flex justify-between items-center text-xs">
-                              <span className="font-semibold text-zinc-700">{item.name} x{item.quantity}</span>
-                              <span className="font-bold text-primary">₹{(item.price * item.quantity).toLocaleString()}</span>
+                        {/* Mapped Products list with Images */}
+                        <div className="divide-y divide-zinc-100">
+                          {(order.products || order.items || []).map((item: any, index: number) => (
+                            <div key={index} className="py-3 flex items-center gap-4 text-xs first:pt-0 last:pb-0">
+                              {/* Product Image */}
+                              <div className="w-14 h-14 rounded-xl bg-zinc-50 border border-zinc-100 overflow-hidden flex-shrink-0">
+                                <img
+                                  src={item.productImage || item.image || "/placeholder.png"}
+                                  alt={item.productName || item.name || "Product"}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              {/* Product Details */}
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold text-primary truncate text-sm">{item.productName || item.name || "Premium Ornament"}</p>
+                                {item.material && <p className="text-[10px] text-zinc-400 font-bold uppercase mt-0.5">{item.material}</p>}
+                                <p className="text-zinc-500 font-medium mt-1">Qty: {item.quantity}</p>
+                              </div>
+                              {/* Item Total Price */}
+                              <div className="text-right">
+                                <span className="font-bold text-primary text-sm">₹{(item.price * item.quantity).toLocaleString()}</span>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -325,28 +335,28 @@ function AccountDashboardContent() {
                         {/* Status indicators */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-3 border-t border-zinc-100 gap-2 text-xs">
                           <span className="text-zinc-500 font-medium normal-case">
-                            Shipping Address: {order.shippingAddress ? `${order.shippingAddress.street || order.shippingAddress.addressLine1 || ""}, ${order.shippingAddress.city || ""}` : (order.address || "N/A")}
+                            Shipping Address: {order.shippingAddress ? `${order.shippingAddress.fullName || ""}, ${order.shippingAddress.street || ""}, ${order.shippingAddress.city || ""}` : (order.address || "N/A")}
                           </span>
                           <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                             {/* Payment Status */}
-                            <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider border ${
-                              order.paymentStatus === "Paid"
+                            <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider border ${order.paymentStatus === "Paid"
                                 ? "bg-green-50 text-green-700 border-green-200"
                                 : order.paymentStatus === "Failed"
-                                ? "bg-red-50 text-red-700 border-red-200"
-                                : "bg-amber-50 text-amber-700 border-amber-200"
-                            }`}>
+                                  ? "bg-red-50 text-red-700 border-red-200"
+                                  : "bg-amber-50 text-amber-700 border-amber-200"
+                              }`}>
                               Payment: {order.paymentStatus || "Pending"}
                             </span>
 
                             {/* Order Status */}
-                            <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider border ${
-                              order.orderStatus === "delivered" || order.status === "delivered"
-                                ? "bg-green-50 text-green-700 border-green-200"
-                                : order.orderStatus === "cancelled" || order.status === "cancelled"
-                                ? "bg-red-50 text-red-700 border-red-200"
-                                : "bg-blue-50 text-blue-700 border-blue-200"
-                            }`}>
+                            <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider border ${order.orderStatus === "Confirmed" || order.status === "Confirmed"
+                                ? "bg-blue-50 text-blue-700 border-blue-200"
+                                : order.orderStatus === "delivered" || order.status === "delivered"
+                                  ? "bg-green-50 text-green-700 border-green-200"
+                                  : order.orderStatus === "cancelled" || order.status === "cancelled"
+                                    ? "bg-red-50 text-red-700 border-red-200"
+                                    : "bg-blue-50 text-blue-700 border-blue-200"
+                              }`}>
                               Order: {order.orderStatus || order.status || "Processing"}
                             </span>
                           </div>

@@ -22,7 +22,7 @@ function SuccessContent() {
         transition={{ type: "spring", stiffness: 100, damping: 10 }}
         className="w-20 h-20 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 mx-auto shadow-md"
       >
-        <CheckCircle2 size={44} className="stroke-[1.5]" />
+        {/* <CheckCircle2 size={44} className="stroke-[1.5]" /> */}
       </motion.div>
 
       {/* Greeting Title */}

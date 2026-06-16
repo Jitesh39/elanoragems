@@ -223,9 +223,11 @@ function CheckoutContent() {
                 state: address.state || "",
                 zipCode: address.zipCode || "",
               },
-              userId: user?.uid || "guest",
+              userId: user?.uid || "",
+              userEmail: user?.email || "",
               customerEmail: user?.email || "Guest",
-              customerName: address.name || user?.displayName || "Guest"
+              customerName: address.name || user?.displayName || "Guest",
+              customerPhone: address.phone || ""
             })
           });
 
@@ -300,9 +302,11 @@ function CheckoutContent() {
                   razorpayPaymentId: response.razorpay_payment_id,
                   razorpaySignature: response.razorpay_signature,
                   orderData: {
-                    userId: user?.uid || "guest",
+                    userId: user?.uid || "",
+                    userEmail: user?.email || "",
                     customerEmail: user?.email || "Guest",
                     customerName: address?.name || user?.displayName || "Guest",
+                    customerPhone: address?.phone || "",
                     shippingAddress: {
                       fullName: address?.name || "",
                       phone: address?.phone || "",

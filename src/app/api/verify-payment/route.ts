@@ -186,20 +186,36 @@ export async function POST(req: NextRequest) {
 
     // 4. Save validated order into Firestore
     const finalOrderObject = {
-      userId: orderData.userId || "guest",
+      orderId: orderNumber,
       orderNumber: orderNumber,
-      products: orderData.items,
+      userId: orderData.userId || "guest",
+      userEmail: orderData.userEmail || orderData.customerEmail || "",
+      customerName: orderData.customerName || orderData.shippingAddress?.fullName || "",
+      customerPhone: orderData.customerPhone || orderData.shippingAddress?.phone || "",
       shippingAddress: orderData.shippingAddress,
+      products: (orderData.items || []).map((item: any) => ({
+        productId: item.productId || item.id || "",
+        productName: item.productName || item.name || "",
+        productImage: item.productImage || item.image || "",
+        quantity: Number(item.quantity) || 0,
+        price: Number(item.price) || 0,
+        // Compatibility keys:
+        name: item.productName || item.name || "",
+        image: item.productImage || item.image || "",
+        material: item.material || ""
+      })),
       subtotal: Number(orderData.subtotal) || 0,
-      shipping: Number(orderData.shippingFee) || 0,
+      shippingFee: Number(orderData.shippingFee) || 0,
+      shipping: Number(orderData.shippingFee) || 0, // compatibility
       discount: Number(orderData.discount) || 0,
-      total: Number(orderData.totalAmount) || 0,
+      totalAmount: Number(orderData.totalAmount) || Number(orderData.total) || 0,
+      total: Number(orderData.totalAmount) || Number(orderData.total) || 0, // compatibility
       paymentMethod: "Razorpay",
       paymentStatus: "Paid",
+      orderStatus: "Confirmed",
       razorpayOrderId: razorpayOrderId,
       razorpayPaymentId: razorpayPaymentId,
-      createdAt: serverTimestamp(),
-      orderStatus: "confirmed" // set status to confirmed as paid
+      createdAt: serverTimestamp()
     };
 
     await setDoc(doc(db, "orders", orderNumber), finalOrderObject);
