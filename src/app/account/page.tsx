@@ -7,7 +7,6 @@ import {
   ShoppingBag,
   Heart,
   MapPin,
-  Tag,
   Settings as SettingsIcon,
   LogOut,
   Plus,
@@ -25,31 +24,8 @@ import { useAuth, Address } from "@/context/AuthContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { CustomerRoute } from "@/components/CustomerRoute";
 import { useCart } from "@/context/CartContext";
-
-// Initial mock orders
-const MOCK_ORDERS = [
-  {
-    id: "ORD-9281A",
-    date: "2026-06-05",
-    status: "delivered",
-    items: [
-      { name: "Premium Sterling Silver Ring", quantity: 1, price: 1299 }
-    ],
-    total: 1299,
-    address: "Bandra West, Mumbai"
-  },
-  {
-    id: "ORD-1827C",
-    date: "2026-06-09",
-    status: "processing",
-    items: [
-      { name: "Royal Gold Plated Necklace", quantity: 1, price: 2499 },
-      { name: "Minimalist Silver Anklet", quantity: 1, price: 999 }
-    ],
-    total: 3498,
-    address: "Bandra West, Mumbai"
-  }
-];
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 function AccountDashboardContent() {
   const router = useRouter();
@@ -58,8 +34,10 @@ function AccountDashboardContent() {
   const { wishlistItems, toggleWishlist } = useWishlist();
   const { addToCart } = useCart();
 
-  // Tab State: "profile" | "orders" | "wishlist" | "addresses" | "coupons" | "settings"
+  // Tab State: "profile" | "orders" | "wishlist" | "addresses" | "settings"
   const [activeTab, setActiveTab] = useState("profile");
+  const [orders, setOrders] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
 
   // Address form states
   const [showAddressForm, setShowAddressForm] = useState(false);
@@ -83,6 +61,36 @@ function AccountDashboardContent() {
       router.push("/login");
     }
   }, [user, loading, router]);
+
+  // Fetch real orders from Firestore
+  useEffect(() => {
+    if (!user?.email) return;
+
+    const ordersRef = collection(db, "orders");
+    const q = query(ordersRef, where("customerEmail", "==", user.email));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedOrders: any[] = [];
+      snapshot.forEach((doc) => {
+        fetchedOrders.push({ id: doc.id, ...doc.data() });
+      });
+
+      // Sort by date/createdAt descending
+      fetchedOrders.sort((a, b) => {
+        const dateA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+        const dateB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+        return dateB - dateA;
+      });
+
+      setOrders(fetchedOrders);
+      setOrdersLoading(false);
+    }, (error) => {
+      console.error("Error fetching orders:", error);
+      setOrdersLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user?.email]);
 
   if (loading || !user) {
     return (
@@ -216,15 +224,6 @@ function AccountDashboardContent() {
                 <MapPin size={16} className={activeTab === "addresses" ? "text-secondary" : ""} />
                 Shipping Addresses
               </button>
-
-              <button
-                onClick={() => setActiveTab("coupons")}
-                className={`w-full py-3 px-4 rounded-xl text-left text-xs font-bold uppercase tracking-wider flex items-center gap-3 transition-all cursor-pointer ${activeTab === "coupons" ? "bg-primary text-white" : "text-zinc-500 hover:bg-accent"
-                  }`}
-              >
-                <Tag size={16} className={activeTab === "coupons" ? "text-secondary" : ""} />
-                My Coupons
-              </button>
             </div>
           </aside>
 
@@ -268,54 +267,71 @@ function AccountDashboardContent() {
                 </div>
 
                 <div className="space-y-4">
-                  {MOCK_ORDERS.map((order) => (
-                    <div key={order.id} className="border border-zinc-100 rounded-2xl p-5 hover:shadow-sm transition-shadow space-y-4">
-
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between justify-center gap-2 border-b border-zinc-100 pb-3">
-                        <div>
-                          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Order ID</span>
-                          <span className="font-bold text-primary text-sm">{order.id}</span>
-                        </div>
-                        <div className="flex items-center gap-6">
-                          <div>
-                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Order Date</span>
-                            <span className="font-semibold text-zinc-600 text-xs">{order.date}</span>
-                          </div>
-                          <div>
-                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Total Amount</span>
-                            <span className="font-bold text-secondary text-xs">₹{order.total}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Items */}
-                      <div className="space-y-2">
-                        {order.items.map((item, index) => (
-                          <div key={index} className="flex justify-between items-center text-xs">
-                            <span className="font-semibold text-zinc-700">{item.name} x{item.quantity}</span>
-                            <span className="font-bold text-primary">₹{item.price * item.quantity}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Status indicator */}
-                      <div className="flex items-center justify-between pt-2 border-t border-zinc-100 text-xs">
-                        <span className="text-zinc-500 font-medium normal-case">Shipping Address: {order.address}</span>
-                        <div className="flex items-center gap-1.5 uppercase font-bold text-[9px] tracking-wider">
-                          {order.status === "delivered" ? (
-                            <span className="text-green-700 bg-green-50 px-2.5 py-1 rounded flex items-center gap-1">
-                              <CheckCircle2 size={12} /> Delivered
-                            </span>
-                          ) : (
-                            <span className="text-amber-700 bg-amber-50 px-2.5 py-1 rounded flex items-center gap-1">
-                              <Clock size={12} /> Processing
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
+                  {ordersLoading ? (
+                    <div className="text-center py-12">
+                      <div className="w-8 h-8 border-2 border-secondary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                      <p className="text-zinc-500 text-xs font-semibold">Loading orders...</p>
                     </div>
-                  ))}
+                  ) : orders.length === 0 ? (
+                    <div className="text-center py-12 space-y-2">
+                      <ShoppingBag size={48} className="text-zinc-200 mx-auto" />
+                      <p className="font-serif text-sm font-semibold text-zinc-400">You haven't placed any orders yet</p>
+                      <p className="text-xs text-zinc-400 max-w-xs mx-auto">Once you check out, your purchase history will appear here.</p>
+                    </div>
+                  ) : (
+                    orders.map((order) => (
+                      <div key={order.id} className="border border-zinc-100 rounded-2xl p-5 hover:shadow-sm transition-shadow space-y-4">
+
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between justify-center gap-2 border-b border-zinc-100 pb-3">
+                          <div>
+                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Order ID</span>
+                            <span className="font-bold text-primary text-sm">{order.id}</span>
+                          </div>
+                          <div className="flex items-center gap-6">
+                            <div>
+                              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Order Date</span>
+                              <span className="font-semibold text-zinc-600 text-xs">
+                                {order.createdAt ? new Date(order.createdAt.toMillis ? order.createdAt.toMillis() : order.createdAt).toLocaleDateString() : "N/A"}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Total Amount</span>
+                              <span className="font-bold text-secondary text-xs">₹{order.totalAmount || order.total}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Items */}
+                        <div className="space-y-2">
+                          {order.items && order.items.map((item: any, index: number) => (
+                            <div key={index} className="flex justify-between items-center text-xs">
+                              <span className="font-semibold text-zinc-700">{item.name} x{item.quantity}</span>
+                              <span className="font-bold text-primary">₹{item.price * item.quantity}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Status indicator */}
+                        <div className="flex items-center justify-between pt-2 border-t border-zinc-100 text-xs">
+                          <span className="text-zinc-500 font-medium normal-case">
+                            Shipping Address: {order.shippingAddress ? `${order.shippingAddress.street}, ${order.shippingAddress.city}` : (order.address || "N/A")}
+                          </span>
+                          <div className="flex items-center gap-1.5 uppercase font-bold text-[9px] tracking-wider">
+                            {order.status === "delivered" ? (
+                              <span className="text-green-700 bg-green-50 px-2.5 py-1 rounded flex items-center gap-1">
+                                <CheckCircle2 size={12} /> Delivered
+                              </span>
+                            ) : (
+                              <span className="text-amber-700 bg-amber-50 px-2.5 py-1 rounded flex items-center gap-1">
+                                <Clock size={12} /> {order.status || "Processing"}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             )}
@@ -541,45 +557,6 @@ function AccountDashboardContent() {
               </div>
             )}
 
-            {/* 5. Coupons Panel */}
-            {activeTab === "coupons" && (
-              <div className="space-y-6">
-                <div className="border-b border-zinc-100 pb-3">
-                  <h2 className="font-serif text-xl font-bold text-primary">Active Coupons</h2>
-                  <p className="text-zinc-400 text-[10px] uppercase font-bold tracking-wider mt-0.5">Copy promotional codes for discounts</p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="border border-secondary/20 rounded-2xl p-5 bg-amber-50/30 flex flex-col justify-between gap-4">
-                    <div>
-                      <span className="bg-secondary text-white text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded w-fit block">WELCOME SPECIAL</span>
-                      <h4 className="font-serif text-lg font-bold text-primary mt-2">ELANORA10</h4>
-                      <p className="text-xs text-zinc-500 normal-case mt-1 font-medium">Flat 10% Discount on all jewelry items. No minimum purchase required.</p>
-                    </div>
-                    <div className="text-[10px] text-zinc-400 font-bold uppercase">Expires: Dec 2026</div>
-                  </div>
-
-                  <div className="border border-secondary/20 rounded-2xl p-5 bg-amber-50/30 flex flex-col justify-between gap-4">
-                    <div>
-                      <span className="bg-secondary text-white text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded w-fit block">FESTIVE DISCOUNT</span>
-                      <h4 className="font-serif text-lg font-bold text-primary mt-2">SHIMMER10</h4>
-                      <p className="text-xs text-zinc-500 normal-case mt-1 font-medium">Enjoy 10% Off on our sterling silver chains and earrings collection.</p>
-                    </div>
-                    <div className="text-[10px] text-zinc-400 font-bold uppercase">Expires: Dec 2026</div>
-                  </div>
-
-                  <div className="border border-secondary/20 rounded-2xl p-5 bg-amber-50/30 flex flex-col justify-between gap-4">
-                    <div>
-                      <span className="bg-secondary text-white text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded w-fit block">FIRST ORDER</span>
-                      <h4 className="font-serif text-lg font-bold text-primary mt-2">WELCOME50</h4>
-                      <p className="text-xs text-zinc-500 normal-case mt-1 font-medium">Flat ₹50 Discount on your first purchase above ₹500.</p>
-                    </div>
-                    <div className="text-[10px] text-zinc-400 font-bold uppercase">Expires: Dec 2026</div>
-                  </div>
-                </div>
-
-              </div>
-            )}
 
           </section>
         </div>

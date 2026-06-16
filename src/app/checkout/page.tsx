@@ -23,6 +23,8 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useAuth, Address } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 // Wrap checkout content in a sub-component to safely use useSearchParams in Next.js Suspense
 function CheckoutContent() {
@@ -113,7 +115,7 @@ function CheckoutContent() {
     }
   };
 
-  const handleCreateOrder = () => {
+  const handleCreateOrder = async () => {
     // Check validation
     if (cartItems.length === 0) return;
 
@@ -125,11 +127,65 @@ function CheckoutContent() {
       }
       setStep(3);
     } else if (step === 3) {
-      // Payment mock & order placement
-      const randomOrderId = `ELN-${Math.floor(100000 + Math.random() * 900000)}`;
-      setOrderId(randomOrderId);
-      setStep(4);
-      clearCart();
+      try {
+        // Payment mock & order placement
+        const randomOrderId = `ELN-${Math.floor(100000 + Math.random() * 900000)}`;
+
+        // Find selected address details
+        const address = newAddressForm 
+          ? {
+              name: shipName,
+              phone: shipPhone,
+              street: shipStreet,
+              city: shipCity,
+              state: shipState,
+              zipCode: shipZip,
+            }
+          : user?.addresses.find((a) => a.id === selectedAddressId);
+
+        const orderData = {
+          customerEmail: user?.email || "Guest",
+          customerName: address?.name || user?.displayName || "Guest",
+          shippingAddress: {
+            fullName: address?.name || "",
+            phone: address?.phone || "",
+            street: address?.street || "",
+            city: address?.city || "",
+            state: address?.state || "",
+            zipCode: address?.zipCode || "",
+          },
+          items: cartItems.map((item) => ({
+            productId: item.productId,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+            image: item.image,
+            material: item.material || ""
+          })),
+          subtotal: cartSubtotal,
+          discount: discountAmount,
+          shippingFee: shippingFee,
+          gst: gstAmount,
+          totalAmount: finalTotal,
+          paymentMethod: paymentMethod,
+          couponApplied: appliedCoupon || null,
+          status: "pending",
+          createdAt: serverTimestamp()
+        };
+
+        // If user is authenticated, store order in Firestore. If guest, allow guest checkout.
+        // Note: The firestore.rules require authentication to write to /orders.
+        if (user) {
+          await setDoc(doc(db, "orders", randomOrderId), orderData);
+        }
+
+        setOrderId(randomOrderId);
+        setStep(4);
+        clearCart();
+      } catch (error) {
+        console.error("Error creating order in Firestore:", error);
+        alert("Failed to place order. Please try again.");
+      }
     }
   };
 
