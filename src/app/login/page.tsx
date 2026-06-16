@@ -114,9 +114,7 @@ function LoginContent() {
 
           {/* Heading */}
           <div className="text-center mb-6">
-            <span className="text-secondary text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1">
-              <Sparkles size={12} /> ElanoraGems
-            </span>
+
             <h2 className="font-serif text-2xl sm:text-3xl font-bold text-primary mt-1">
               {activeTab === "login" && "Welcome Back"}
               {activeTab === "signup" && "Create Account"}
@@ -167,7 +165,7 @@ function LoginContent() {
           {/* Password Reset Sent notification */}
           {resetSent && (
             <div className="bg-green-50 border border-green-200 text-green-800 p-4 rounded-lg text-xs font-semibold text-center mb-6">
-              ✉️ We have sent a password reset link to your email address. Check your inbox.
+              We have sent a password reset link to your email address. Check your inbox.
             </div>
           )}
 
@@ -255,17 +253,17 @@ function LoginContent() {
 
           {/* Social Google Login Divider */}
           {activeTab !== "forgot" && (
-            <div className="space-y-4 mt-6">
+            <div className="space-y-3 mt-2">
               <div className="relative flex py-2 items-center">
                 <div className="flex-grow border-t border-zinc-100"></div>
-                <span className="flex-shrink mx-4 text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Or Continue With</span>
+                <span className="flex-shrink mx-2 text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Or Continue With</span>
                 <div className="flex-grow border-t border-zinc-100"></div>
               </div>
 
               <button
                 onClick={handleGoogleLogin}
                 disabled={authLoading}
-                className="w-full py-2.5 bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-50 text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+                className="w-full py-2.5 bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-50 text-xs font-bold rounded-lg flex items-center justify-center gap-1 transition-all cursor-pointer shadow-sm"
               >
                 {/* Google SVG Icon */}
                 <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">

@@ -16,20 +16,17 @@ function SuccessContent() {
   return (
     <div className="max-w-xl mx-auto text-center space-y-8 py-16 px-4">
       {/* Animated Success Check */}
-      <motion.div
+      {/* <motion.div
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ type: "spring", stiffness: 100, damping: 10 }}
         className="w-20 h-20 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 mx-auto shadow-md"
       >
-        {/* <CheckCircle2 size={44} className="stroke-[1.5]" /> */}
-      </motion.div>
+        <CheckCircle2 size={44} className="stroke-[1.5]" />
+      </motion.div> */}
 
       {/* Greeting Title */}
       <div className="space-y-2">
-        <span className="text-secondary text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-1">
-          <Sparkles size={12} /> Transaction Success
-        </span>
         <h1 className="font-serif text-3xl sm:text-4xl font-bold text-[#0F2F6B]">Payment Successful!</h1>
         <p className="text-zinc-500 text-xs sm:text-sm leading-relaxed max-w-sm mx-auto normal-case font-medium">
           Thank you for shopping with ElanoraGems. Your payment was verified successfully and your order has been placed.
