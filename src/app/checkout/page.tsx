@@ -153,13 +153,42 @@ function CheckoutContent() {
     }
   }, [cartSubtotal, appliedCoupon]);
 
-  // Set default selected address from profile on load
+  const [defaultAddress, setDefaultAddress] = useState<any>(null);
+  const [addressLoading, setAddressLoading] = useState(true);
+
+  // Fetch real-time Default Address from Firestore
   useEffect(() => {
-    if (user && user.addresses.length > 0) {
-      const def = user.addresses.find((a) => a.isDefault) || user.addresses[0];
-      setSelectedAddressId(def.id);
+    if (!user?.uid) {
+      setAddressLoading(false);
+      return;
     }
-  }, [user]);
+    const addressRef = doc(db, "users", user.uid, "addresses", "default");
+    const unsubscribe = onSnapshot(addressRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setDefaultAddress(docSnap.data());
+      } else {
+        setDefaultAddress(null);
+      }
+      setAddressLoading(false);
+    }, (error) => {
+      console.error("Error fetching default address in checkout:", error);
+      setAddressLoading(false);
+    });
+    return () => unsubscribe();
+  }, [user?.uid]);
+
+  // Set default selected address and new address form state
+  useEffect(() => {
+    if (!addressLoading) {
+      if (defaultAddress) {
+        setSelectedAddressId("default");
+        setNewAddressForm(false);
+      } else {
+        setSelectedAddressId("");
+        setNewAddressForm(true);
+      }
+    }
+  }, [defaultAddress, addressLoading]);
 
   // Trigger confetti celebration on Success screen
   useEffect(() => {
@@ -211,14 +240,23 @@ function CheckoutContent() {
         // Find selected address details
         const address = newAddressForm
           ? {
-            name: shipName,
-            phone: shipPhone,
-            street: shipStreet,
-            city: shipCity,
-            state: shipState,
-            zipCode: shipZip,
-          }
-          : user?.addresses.find((a) => a.id === selectedAddressId);
+              name: shipName,
+              phone: shipPhone,
+              street: shipStreet,
+              city: shipCity,
+              state: shipState,
+              zipCode: shipZip,
+            }
+          : defaultAddress
+            ? {
+                name: defaultAddress.recipientName,
+                phone: defaultAddress.primaryPhone,
+                street: defaultAddress.streetAddress,
+                city: defaultAddress.city,
+                state: defaultAddress.state,
+                zipCode: defaultAddress.pincode,
+              }
+            : null;
 
         if (!address) {
           alert("Shipping address is required.");
@@ -543,24 +581,28 @@ function CheckoutContent() {
                 ) : (
                   /* List saved user addresses */
                   <div className="space-y-3">
-                    {user && user.addresses.length > 0 ? (
-                      user.addresses.map((addr) => (
-                        <div
-                          key={addr.id}
-                          onClick={() => setSelectedAddressId(addr.id)}
-                          className={`p-4 border rounded-2xl cursor-pointer transition-all ${selectedAddressId === addr.id
-                            ? "border-secondary bg-accent/20 ring-1 ring-secondary"
-                            : "border-zinc-100 hover:border-zinc-200"
-                            }`}
-                        >
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="font-bold text-primary">{addr.name}</span>
-                            {addr.isDefault && <span className="text-[8px] bg-secondary/15 text-secondary font-bold uppercase tracking-widest px-2 py-0.5 rounded">Default</span>}
-                          </div>
-                          <p className="text-zinc-500 text-[11px] mt-1 normal-case">{addr.street}, {addr.city}, {addr.state} - {addr.zipCode}</p>
-                          <p className="text-zinc-400 text-[10px] font-bold mt-2">Phone: +91 {addr.phone}</p>
+                    {addressLoading ? (
+                      <div className="p-8 border border-zinc-100 rounded-2xl text-center text-xs text-zinc-400">
+                        Loading saved address...
+                      </div>
+                    ) : defaultAddress ? (
+                      <div
+                        onClick={() => setSelectedAddressId("default")}
+                        className={`p-4 border rounded-2xl cursor-pointer transition-all ${selectedAddressId === "default"
+                          ? "border-secondary bg-accent/20 ring-1 ring-secondary"
+                          : "border-zinc-100 hover:border-zinc-200"
+                          }`}
+                      >
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-bold text-primary">{defaultAddress.recipientName}</span>
+                          <span className="text-[8px] bg-secondary/15 text-secondary font-bold uppercase tracking-widest px-2 py-0.5 rounded">Default</span>
                         </div>
-                      ))
+                        <p className="text-zinc-500 text-[11px] mt-1 normal-case">{defaultAddress.streetAddress}, {defaultAddress.city}, {defaultAddress.state} - {defaultAddress.pincode}</p>
+                        <p className="text-zinc-400 text-[10px] font-bold mt-2">Primary Phone: +91 {defaultAddress.primaryPhone}</p>
+                        {defaultAddress.alternatePhone && (
+                          <p className="text-zinc-400 text-[10px] font-bold">Alternate Phone: +91 {defaultAddress.alternatePhone}</p>
+                        )}
+                      </div>
                     ) : (
                       <div className="p-8 border border-dashed border-zinc-200 rounded-2xl text-center text-xs text-zinc-400">
                         No saved addresses found. Please enter a new address above.

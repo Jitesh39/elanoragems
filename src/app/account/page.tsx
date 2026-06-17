@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   User,
@@ -15,22 +15,55 @@ import {
   Clock,
   Truck,
   MapPinOff,
-  Sparkles
+  Sparkles,
+  Edit3,
+  AlertCircle
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { CartDrawer } from "@/components/CartDrawer";
-import { useAuth, Address } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { CustomerRoute } from "@/components/CustomerRoute";
 import { useCart } from "@/context/CartContext";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { motion, AnimatePresence } from "framer-motion";
+
+// Toast component for notifications
+const Toast = ({ type, message, onClose }: { type: "success" | "error"; message: string; onClose: () => void }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 4000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 50, scale: 0.9 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 20, scale: 0.95 }}
+      className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-xl shadow-xl border ${type === "success"
+        ? "bg-emerald-950/95 border-emerald-500/30 text-emerald-200"
+        : "bg-red-950/95 border-red-500/30 text-red-200"
+        } backdrop-blur-md max-w-sm`}
+    >
+      {type === "success" ? (
+        <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+      ) : (
+        <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+      )}
+      <p className="text-sm font-medium leading-relaxed">{message}</p>
+      <button onClick={onClose} className="ml-auto text-xs opacity-60 hover:opacity-100 font-bold px-1.5 py-0.5 rounded cursor-pointer">
+        ✕
+      </button>
+    </motion.div>
+  );
+};
 
 function AccountDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, loading, logout, updateAddresses } = useAuth();
+  const { user, loading, logout } = useAuth();
   const { wishlistItems, toggleWishlist } = useWishlist();
   const { addToCart } = useCart();
 
@@ -39,15 +72,23 @@ function AccountDashboardContent() {
   const [orders, setOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
 
-  // Address form states
-  const [showAddressForm, setShowAddressForm] = useState(false);
-  const [addrName, setAddrName] = useState("");
-  const [addrPhone, setAddrPhone] = useState("");
-  const [addrStreet, setAddrStreet] = useState("");
-  const [addrCity, setAddrCity] = useState("");
-  const [addrState, setAddrState] = useState("");
-  const [addrZip, setAddrZip] = useState("");
-  const [addrDefault, setAddrDefault] = useState(false);
+  // Default address fields
+  const [recipientName, setRecipientName] = useState("");
+  const [primaryPhone, setPrimaryPhone] = useState("");
+  const [alternatePhone, setAlternatePhone] = useState("");
+  const [streetAddress, setStreetAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [pincode, setPincode] = useState("");
+  const [addressLoading, setAddressLoading] = useState(true);
+  const [defaultAddress, setDefaultAddress] = useState<any>(null);
+
+  // Phone Validation Errors
+  const [primaryPhoneError, setPrimaryPhoneError] = useState("");
+  const [alternatePhoneError, setAlternatePhoneError] = useState("");
+
+  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
 
   // Sync tab with URL queries if available (e.g. ?tab=orders)
   useEffect(() => {
@@ -61,6 +102,38 @@ function AccountDashboardContent() {
       router.push("/login");
     }
   }, [user, loading, router]);
+
+  // Fetch real-time Default Address from Firestore
+  useEffect(() => {
+    if (!user?.uid) {
+      setAddressLoading(false);
+      return;
+    }
+
+    const addressRef = doc(db, "users", user.uid, "addresses", "default");
+    const unsubscribe = onSnapshot(addressRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setDefaultAddress(data);
+        // Pre-fill editable states if they exist
+        setRecipientName(data.recipientName || "");
+        setPrimaryPhone(data.primaryPhone || "");
+        setAlternatePhone(data.alternatePhone || "");
+        setStreetAddress(data.streetAddress || "");
+        setCity(data.city || "");
+        setState(data.state || "");
+        setPincode(data.pincode || "");
+      } else {
+        setDefaultAddress(null);
+      }
+      setAddressLoading(false);
+    }, (error) => {
+      console.error("Error fetching default address:", error);
+      setAddressLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user?.uid]);
 
   // Fetch real orders from Firestore
   useEffect(() => {
@@ -92,66 +165,72 @@ function AccountDashboardContent() {
     return () => unsubscribe();
   }, [user?.uid]);
 
-  if (loading || !user) {
+  const validatePhoneNumber = (number: string) => {
+    const regex = /^[6-9][0-9]{9}$/;
+    return regex.test(number);
+  };
+
+  const handlePrimaryPhoneChange = (val: string) => {
+    setPrimaryPhone(val);
+    if (val && !validatePhoneNumber(val)) {
+      setPrimaryPhoneError("Please enter a valid 10-digit mobile number");
+    } else {
+      setPrimaryPhoneError("");
+    }
+  };
+
+  const handleAlternatePhoneChange = (val: string) => {
+    setAlternatePhone(val);
+    if (val && !validatePhoneNumber(val)) {
+      setAlternatePhoneError("Please enter a valid 10-digit mobile number");
+    } else {
+      setAlternatePhoneError("");
+    }
+  };
+
+  const isFormValid = useMemo(() => {
     return (
-      <div className="min-h-screen bg-white flex flex-col justify-between">
-        <Header />
-        <div className="flex-1 flex flex-col items-center justify-center py-24">
-          {/* Luxury Spinner Loader */}
-          <div className="w-12 h-12 border-2 border-secondary border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="font-serif text-sm font-semibold tracking-widest text-zinc-500 uppercase">Loading Account Profile...</p>
-        </div>
-        <Footer />
-      </div>
+      recipientName.trim() !== "" &&
+      streetAddress.trim() !== "" &&
+      city.trim() !== "" &&
+      state.trim() !== "" &&
+      pincode.trim() !== "" &&
+      validatePhoneNumber(primaryPhone) &&
+      validatePhoneNumber(alternatePhone)
     );
-  }
+  }, [recipientName, primaryPhone, alternatePhone, streetAddress, city, state, pincode]);
 
-  // Handle adding a new shipping address
-  const handleAddAddress = async (e: React.FormEvent) => {
+  const handleSaveAddress = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newAddress: Address = {
-      id: Date.now().toString(),
-      name: addrName,
-      phone: addrPhone,
-      street: addrStreet,
-      city: addrCity,
-      state: addrState,
-      zipCode: addrZip,
-      isDefault: addrDefault
-    };
+    if (!isFormValid || !user?.uid) return;
 
-    let updatedAddresses = [...user.addresses];
-    if (addrDefault) {
-      // Unmark all other defaults
-      updatedAddresses = updatedAddresses.map((a) => ({ ...a, isDefault: false }));
-    }
-    updatedAddresses.push(newAddress);
-
+    setIsSavingAddress(true);
     try {
-      await updateAddresses(updatedAddresses);
-      // Reset form
-      setShowAddressForm(false);
-      setAddrName("");
-      setAddrPhone("");
-      setAddrStreet("");
-      setAddrCity("");
-      setAddrState("");
-      setAddrZip("");
-      setAddrDefault(false);
+      const addressRef = doc(db, "users", user.uid, "addresses", "default");
+      await setDoc(addressRef, {
+        recipientName: recipientName.trim(),
+        primaryPhone: primaryPhone.trim(),
+        alternatePhone: alternatePhone.trim(),
+        streetAddress: streetAddress.trim(),
+        city: city.trim(),
+        state: state.trim(),
+        pincode: pincode.trim(),
+        isDefault: true,
+        updatedAt: serverTimestamp()
+      });
+
+      setToast({ type: "success", message: "Address updated successfully" });
     } catch (err) {
-      alert("Error adding address. Please try again.");
+      console.error("Error saving address:", err);
+      setToast({ type: "error", message: "Failed to update address. Please try again." });
+    } finally {
+      setIsSavingAddress(false);
     }
   };
 
-  // Handle removing a shipping address
-  const handleRemoveAddress = async (id: string) => {
-    const updated = user.addresses.filter((a) => a.id !== id);
-    try {
-      await updateAddresses(updated);
-    } catch (err) {
-      alert("Error removing address.");
-    }
-  };
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-accent/20 flex flex-col justify-between">
@@ -165,9 +244,6 @@ function AccountDashboardContent() {
           <div className="absolute top-0 right-0 w-64 h-64 bg-secondary/5 rounded-full translate-x-20 -translate-y-20 pointer-events-none" />
 
           <div className="space-y-2 relative z-10">
-            <span className="text-secondary text-xs font-bold uppercase tracking-widest flex items-center gap-1">
-              <Sparkles size={12} /> Member Dashboard
-            </span>
             <h1 className="font-serif text-3xl sm:text-4xl font-bold">Hello, {user.displayName}</h1>
             <p className="text-zinc-300 text-xs sm:text-sm font-medium normal-case">Manage your orders, profile details, wishlist, and shipping addresses.</p>
           </div>
@@ -232,12 +308,12 @@ function AccountDashboardContent() {
 
             {/* 1. Profile Panel */}
             {activeTab === "profile" && (
-              <div className="space-y-6">
+              <div className="space-y-6 animate-fadeIn">
                 <div className="border-b border-zinc-100 pb-3">
                   <h2 className="font-serif text-xl font-bold text-primary">Profile Details</h2>
                   <p className="text-zinc-400 text-[10px] uppercase font-bold tracking-wider mt-0.5">Manage your personal credentials</p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm font-sans">
                   <div>
                     <span className="text-[10px] font-bold text-zinc-400 uppercase block">Full Name</span>
                     <span className="font-semibold text-primary block mt-1 text-base">{user.displayName}</span>
@@ -247,12 +323,33 @@ function AccountDashboardContent() {
                     <span className="font-semibold text-primary block mt-1 text-base">{user.email}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase block">Account Role</span>
-                    <span className="font-semibold text-primary block mt-1 text-base capitalize">{user.role}</span>
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase block">Contact Number</span>
+                    <span className="font-semibold text-primary block mt-1 text-base">
+                      {addressLoading ? "Loading..." : (defaultAddress ? defaultAddress.primaryPhone : "No contact number saved")}
+                    </span>
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase block">Saved Addresses</span>
-                    <span className="font-semibold text-primary block mt-1 text-base">{user.addresses.length} entries</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase block">Default Address</span>
+                      <button
+                        onClick={() => setActiveTab("addresses")}
+                        className="p-1 text-zinc-400 hover:text-secondary rounded hover:bg-zinc-100 transition-colors cursor-pointer"
+                        title="Edit Address"
+                      >
+                        <Edit3 size={12} />
+                      </button>
+                    </div>
+                    <div className="font-semibold text-primary block mt-1 text-base leading-relaxed whitespace-pre-line">
+                      {addressLoading ? (
+                        "Loading..."
+                      ) : defaultAddress ? (
+                        `${defaultAddress.recipientName}
+                        ${defaultAddress.streetAddress},
+                        ${defaultAddress.city}, ${defaultAddress.state} - ${defaultAddress.pincode}`
+                      ) : (
+                        "No default address saved"
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -340,22 +437,22 @@ function AccountDashboardContent() {
                           <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                             {/* Payment Status */}
                             <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider border ${order.paymentStatus === "Paid"
-                                ? "bg-green-50 text-green-700 border-green-200"
-                                : order.paymentStatus === "Failed"
-                                  ? "bg-red-50 text-red-700 border-red-200"
-                                  : "bg-amber-50 text-amber-700 border-amber-200"
+                              ? "bg-green-50 text-green-700 border-green-200"
+                              : order.paymentStatus === "Failed"
+                                ? "bg-red-50 text-red-700 border-red-200"
+                                : "bg-amber-50 text-amber-700 border-amber-200"
                               }`}>
                               Payment: {order.paymentStatus || "Pending"}
                             </span>
 
                             {/* Order Status */}
                             <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider border ${order.orderStatus === "Confirmed" || order.status === "Confirmed"
-                                ? "bg-blue-50 text-blue-700 border-blue-200"
-                                : order.orderStatus === "delivered" || order.status === "delivered"
-                                  ? "bg-green-50 text-green-700 border-green-200"
-                                  : order.orderStatus === "cancelled" || order.status === "cancelled"
-                                    ? "bg-red-50 text-red-700 border-red-200"
-                                    : "bg-blue-50 text-blue-700 border-blue-200"
+                              ? "bg-blue-50 text-blue-700 border-blue-200"
+                              : order.orderStatus === "delivered" || order.status === "delivered"
+                                ? "bg-green-50 text-green-700 border-green-200"
+                                : order.orderStatus === "cancelled" || order.status === "cancelled"
+                                  ? "bg-red-50 text-red-700 border-red-200"
+                                  : "bg-blue-50 text-blue-700 border-blue-200"
                               }`}>
                               Order: {order.orderStatus || order.status || "Processing"}
                             </span>
@@ -436,155 +533,118 @@ function AccountDashboardContent() {
 
             {/* 4. Address Book Panel */}
             {activeTab === "addresses" && (
-              <div className="space-y-6">
+              <div className="space-y-6 animate-fadeIn">
 
-                <div className="border-b border-zinc-100 pb-3 flex justify-between items-center">
-                  <div>
-                    <h2 className="font-serif text-xl font-bold text-primary">Shipping Addresses</h2>
-                    <p className="text-zinc-400 text-[10px] uppercase font-bold tracking-wider mt-0.5">Manage delivery destinations</p>
-                  </div>
-                  <button
-                    onClick={() => setShowAddressForm(!showAddressForm)}
-                    className="px-4 py-2 bg-secondary hover:bg-secondary-hover text-white text-xs font-bold uppercase tracking-wider rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    {showAddressForm ? "Cancel" : <><Plus size={14} /> Add New</>}
-                  </button>
+                <div className="border-b border-zinc-100 pb-3">
+                  <h2 className="font-serif text-xl font-bold text-primary">Shipping Address</h2>
+                  <p className="text-zinc-400 text-[10px] uppercase font-bold tracking-wider mt-0.5">Manage your default delivery destination</p>
                 </div>
 
-                {/* Add Address Form overlay/panel */}
-                {showAddressForm && (
-                  <form onSubmit={handleAddAddress} className="bg-zinc-50 border border-zinc-100 rounded-2xl p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {addressLoading ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <div className="w-8 h-8 border-2 border-secondary border-t-transparent rounded-full animate-spin mb-3" />
+                    <p className="text-zinc-500 text-xs font-semibold uppercase tracking-wider">Loading address details...</p>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSaveAddress} className="bg-zinc-50 border border-zinc-100 rounded-2xl p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 font-sans">
 
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Recipient Name</label>
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Recipient Name *</label>
                       <input
                         type="text"
                         placeholder="John Doe"
-                        value={addrName}
-                        onChange={(e) => setAddrName(e.target.value)}
-                        className="w-full bg-white border border-zinc-200 rounded-lg p-2 text-xs outline-none"
+                        value={recipientName}
+                        onChange={(e) => setRecipientName(e.target.value)}
+                        className="w-full bg-white border border-zinc-200 rounded-xl p-3 text-xs outline-none focus:border-secondary transition-colors"
                         required
                       />
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Contact Phone</label>
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Primary Mobile Number *</label>
                       <input
                         type="text"
                         placeholder="9876543210"
-                        value={addrPhone}
-                        onChange={(e) => setAddrPhone(e.target.value)}
-                        className="w-full bg-white border border-zinc-200 rounded-lg p-2 text-xs outline-none"
+                        value={primaryPhone}
+                        onChange={(e) => handlePrimaryPhoneChange(e.target.value)}
+                        className={`w-full bg-white border ${primaryPhoneError ? 'border-red-500 focus:border-red-500' : 'border-zinc-200 focus:border-secondary'} rounded-xl p-3 text-xs outline-none transition-colors`}
                         required
                       />
+                      {primaryPhoneError && <p className="text-red-500 text-[10px] font-semibold mt-1">{primaryPhoneError}</p>}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Alternate Mobile Number *</label>
+                      <input
+                        type="text"
+                        placeholder="9876543210"
+                        value={alternatePhone}
+                        onChange={(e) => handleAlternatePhoneChange(e.target.value)}
+                        className={`w-full bg-white border ${alternatePhoneError ? 'border-red-500 focus:border-red-500' : 'border-zinc-200 focus:border-secondary'} rounded-xl p-3 text-xs outline-none transition-colors`}
+                        required
+                      />
+                      {alternatePhoneError && <p className="text-red-500 text-[10px] font-semibold mt-1">{alternatePhoneError}</p>}
                     </div>
 
                     <div className="space-y-1 sm:col-span-2">
-                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Street / Apartment Address</label>
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Street / Apartment Address *</label>
                       <input
                         type="text"
                         placeholder="Flat No, Building Name, Street Name"
-                        value={addrStreet}
-                        onChange={(e) => setAddrStreet(e.target.value)}
-                        className="w-full bg-white border border-zinc-200 rounded-lg p-2 text-xs outline-none"
+                        value={streetAddress}
+                        onChange={(e) => setStreetAddress(e.target.value)}
+                        className="w-full bg-white border border-zinc-200 rounded-xl p-3 text-xs outline-none focus:border-secondary transition-colors"
                         required
                       />
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">City</label>
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">City *</label>
                       <input
                         type="text"
-                        placeholder="Mumbai"
-                        value={addrCity}
-                        onChange={(e) => setAddrCity(e.target.value)}
-                        className="w-full bg-white border border-zinc-200 rounded-lg p-2 text-xs outline-none"
+                        placeholder="Ahmedabad"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        className="w-full bg-white border border-zinc-200 rounded-xl p-3 text-xs outline-none focus:border-secondary transition-colors"
                         required
                       />
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">State</label>
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">State *</label>
                       <input
                         type="text"
-                        placeholder="Maharashtra"
-                        value={addrState}
-                        onChange={(e) => setAddrState(e.target.value)}
-                        className="w-full bg-white border border-zinc-200 rounded-lg p-2 text-xs outline-none"
+                        placeholder="Gujarat"
+                        value={state}
+                        onChange={(e) => setState(e.target.value)}
+                        className="w-full bg-white border border-zinc-200 rounded-xl p-3 text-xs outline-none focus:border-secondary transition-colors"
                         required
                       />
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Pincode / ZIP</label>
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Pincode *</label>
                       <input
                         type="text"
-                        placeholder="400050"
-                        value={addrZip}
-                        onChange={(e) => setAddrZip(e.target.value)}
-                        className="w-full bg-white border border-zinc-200 rounded-lg p-2 text-xs outline-none"
+                        placeholder="380015"
+                        value={pincode}
+                        onChange={(e) => setPincode(e.target.value)}
+                        className="w-full bg-white border border-zinc-200 rounded-xl p-3 text-xs outline-none focus:border-secondary transition-colors"
                         required
                       />
                     </div>
 
-                    <div className="flex items-center gap-2 sm:col-span-2 pt-2">
-                      <input
-                        type="checkbox"
-                        id="defaultAddr"
-                        checked={addrDefault}
-                        onChange={(e) => setAddrDefault(e.target.checked)}
-                        className="rounded accent-secondary"
-                      />
-                      <label htmlFor="defaultAddr" className="text-xs font-semibold text-zinc-600">Set as Default Delivery Address</label>
-                    </div>
-
-                    <div className="sm:col-span-2 pt-2">
+                    <div className="sm:col-span-2 pt-2 flex items-center justify-end">
                       <button
                         type="submit"
-                        className="px-6 py-2.5 bg-primary hover:bg-primary-hover text-white text-xs font-bold uppercase tracking-wider rounded-lg shadow-md cursor-pointer"
+                        disabled={!isFormValid || isSavingAddress}
+                        className="px-6 py-3 bg-secondary hover:bg-[#b8962f] disabled:bg-zinc-300 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold uppercase tracking-wider rounded-xl shadow-md cursor-pointer transition-all hover:-translate-y-0.5 active:translate-y-0"
                       >
-                        Save Address
+                        {isSavingAddress ? "Saving..." : (defaultAddress ? "Update Address" : "Save Address")}
                       </button>
                     </div>
 
                   </form>
-                )}
-
-                {/* Saved addresses display */}
-                {user.addresses.length === 0 ? (
-                  <div className="text-center py-12 space-y-2">
-                    <MapPinOff size={48} className="text-zinc-200 mx-auto" />
-                    <p className="font-serif text-sm font-semibold text-zinc-400">No saved addresses</p>
-                    <p className="text-xs text-zinc-400 max-w-xs mx-auto">Please add a shipping address to facilitate speedier checkout flows.</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {user.addresses.map((a) => (
-                      <div key={a.id} className="border border-zinc-100 rounded-2xl p-5 space-y-3 hover:shadow-sm relative bg-zinc-50/50">
-                        {a.isDefault && (
-                          <span className="absolute top-4 right-4 bg-secondary/10 border border-secondary text-secondary text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded">
-                            Default
-                          </span>
-                        )}
-
-                        <div className="space-y-1 text-xs">
-                          <p className="font-bold text-primary text-sm">{a.name}</p>
-                          <p className="font-medium text-zinc-500 normal-case">{a.street}</p>
-                          <p className="font-medium text-zinc-500 normal-case">{a.city}, {a.state} - {a.zipCode}</p>
-                          <p className="font-bold text-zinc-400 mt-2">Phone: +91 {a.phone}</p>
-                        </div>
-
-                        <div className="flex gap-4 pt-3 border-t border-zinc-100">
-                          <button
-                            onClick={() => handleRemoveAddress(a.id)}
-                            className="text-red-500 hover:text-red-700 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"
-                          >
-                            <Trash2 size={12} /> Remove
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
                 )}
 
               </div>
@@ -597,6 +657,13 @@ function AccountDashboardContent() {
 
       <Footer />
       <CartDrawer />
+
+      {/* Floating notifications */}
+      <AnimatePresence>
+        {toast && (
+          <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
