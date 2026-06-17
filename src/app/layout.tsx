@@ -32,8 +32,9 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${playfair.variable} ${outfit.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col font-sans bg-white text-dark">
+      <body className="min-h-full flex flex-col font-sans bg-white text-dark" suppressHydrationWarning>
         <AuthProvider>
           <CartProvider>
             <WishlistProvider>
