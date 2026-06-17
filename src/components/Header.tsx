@@ -19,7 +19,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 // Simple mock products for instant search demonstration
@@ -94,10 +94,58 @@ export const Header: React.FC = () => {
     setMounted(true);
   }, []);
   const [mobileActiveAccordion, setMobileActiveAccordion] = useState<string | null>(null);
-  // Announcement bar slide state
-  const announcements = ["✨ Free Shipping on Orders Above ₹999", "🎁 Flat 10% Off! Use Coupon Code: ELANORA10", "💎 Luxury Velvet Gift Box Free with Every Order"];
-  const [currentAnnouncementIndex, setCurrentAnnouncementIndex] = useState(0);
+  // Dynamic Announcement Bar State
+  const [announcementSettings, setAnnouncementSettings] = useState<{
+    enabled: boolean;
+    backgroundColor: string;
+    textColor: string;
+    marquee: boolean;
+    announcements: { id: string; message: string; link: string }[];
+  } | null>(null);
   const [showAnnouncement, setShowAnnouncement] = useState(true);
+  const [currentAnnouncementIndex, setCurrentAnnouncementIndex] = useState(0);
+
+  // Fetch dynamic announcement settings
+  useEffect(() => {
+    const docRef = doc(db, "siteSettings", "announcementBar");
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        let list = data.announcements ?? [];
+        // Backward-compatibility: if legacy fields exist and list is empty
+        if (list.length === 0 && data.message) {
+          list = [{
+            id: "legacy-1",
+            message: data.message,
+            link: data.link || ""
+          }];
+        }
+        setAnnouncementSettings({
+          enabled: data.enabled ?? false,
+          backgroundColor: data.backgroundColor ?? "#163a7d",
+          textColor: data.textColor ?? "#ffffff",
+          marquee: data.marquee ?? false,
+          announcements: list,
+        });
+      } else {
+        setAnnouncementSettings(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Cycle announcements if marquee is disabled and multiple items exist
+  useEffect(() => {
+    if (!announcementSettings || announcementSettings.marquee || announcementSettings.announcements.length <= 1) {
+      setCurrentAnnouncementIndex(0);
+      return;
+    }
+    const timer = setInterval(() => {
+      setCurrentAnnouncementIndex((prev) => (prev + 1) % announcementSettings.announcements.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [announcementSettings]);
 
   // Hide announcement on scroll
   useEffect(() => {
@@ -112,12 +160,48 @@ export const Header: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentAnnouncementIndex((prev) => (prev + 1) % announcements.length);
-    }, 4000);
-    return () => clearInterval(timer);
-  }, []);
+  const getActiveLink = () => {
+    if (!announcementSettings || announcementSettings.announcements.length === 0) return null;
+    if (announcementSettings.marquee) {
+      const firstWithLink = announcementSettings.announcements.find((a) => a.link);
+      return firstWithLink?.link || null;
+    }
+    const current = announcementSettings.announcements[currentAnnouncementIndex] || announcementSettings.announcements[0];
+    return current?.link || null;
+  };
+
+  const renderAnnouncementContent = () => {
+    if (!announcementSettings || announcementSettings.announcements.length === 0) return null;
+    if (announcementSettings.marquee) {
+      const combinedText = announcementSettings.announcements.map((a) => a.message).join("     •     ");
+      return (
+        <div className="w-full overflow-hidden whitespace-nowrap">
+          <span className="animate-marquee inline-block pl-[100%] pr-4">
+            {combinedText}
+          </span>
+        </div>
+      );
+    }
+    const current = announcementSettings.announcements[currentAnnouncementIndex] || announcementSettings.announcements[0];
+    if (!current) return null;
+
+    return (
+      <div className="w-full flex justify-center items-center h-4 relative overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.span
+            key={current.id}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.25 }}
+            className="text-center w-full truncate px-4 absolute"
+          >
+            {current.message}
+          </motion.span>
+        </AnimatePresence>
+      </div>
+    );
+  };
 
   // Handle click outside to close dropdowns
   useEffect(() => {
@@ -171,14 +255,26 @@ export const Header: React.FC = () => {
   return (
     <>
       {/* Announcement Bar */}
-      <motion.div
-        className="bg-primary text-white text-xs py-2 overflow-hidden flex items-center justify-center font-medium tracking-wider z-50"
-        initial={{ y: -100, opacity: 0 }}
-        animate={showAnnouncement ? { y: 0, opacity: 1 } : { y: -100, opacity: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        {announcements[currentAnnouncementIndex]}
-      </motion.div>
+      {showAnnouncement && announcementSettings?.enabled && announcementSettings?.announcements && announcementSettings.announcements.length > 0 && (
+        <motion.div
+          style={{
+            backgroundColor: announcementSettings.backgroundColor,
+            color: announcementSettings.textColor
+          }}
+          className="text-xs py-2 overflow-hidden flex items-center justify-center font-medium tracking-wider z-50 select-none"
+          initial={{ y: -100, opacity: 0 }}
+          animate={showAnnouncement ? { y: 0, opacity: 1 } : { y: -100, opacity: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          {getActiveLink() ? (
+            <Link href={getActiveLink()!} className="w-full flex items-center justify-center hover:opacity-90 transition-opacity">
+              {renderAnnouncementContent()}
+            </Link>
+          ) : (
+            renderAnnouncementContent()
+          )}
+        </motion.div>
+      )}
 
       {/* Header */}
       <header className="w-full z-40 sticky top-0 bg-white shadow-sm transition-all duration-300">

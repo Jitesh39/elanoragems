@@ -9,6 +9,7 @@ import { HeroSectionManager } from "@/components/admin/HeroSectionManager";
 import { InfluencerManager } from "@/components/admin/InfluencerManager";
 import { CustomerTestimonialsManager } from "@/components/admin/CustomerTestimonialsManager";
 import { PoliciesManager } from "@/components/admin/PoliciesManager";
+import { AnnouncementBarManager } from "@/components/admin/AnnouncementBarManager";
 
 function SettingsContent() {
   const router = useRouter();
@@ -410,6 +411,10 @@ function SettingsContent() {
       {/* Tab 2: Site Configuration */}
       {activeTab === "site" && (
         <div className="space-y-8">
+
+          <div className="bg-white rounded-2xl shadow-sm border border-[#D4AF37]/20 hover:border-[#D4AF37]/40 p-6 transition-all duration-300">
+            <AnnouncementBarManager />
+          </div>
 
           <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-6">
             <HeroSectionManager />
