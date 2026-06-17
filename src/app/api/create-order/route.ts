@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Razorpay from "razorpay";
+import { validateCoupon } from "@/lib/coupons";
 
 export async function POST(req: NextRequest) {
   try {
@@ -61,39 +62,11 @@ export async function POST(req: NextRequest) {
     // 3. Validate Coupon if applied
     let discount = 0;
     if (couponCode) {
-      const cleanCoupon = couponCode.trim().toUpperCase();
-      const couponsRef = collection(db, "coupons");
-      const q = query(couponsRef, where("code", "==", cleanCoupon));
-      const couponSnap = await getDocs(q);
-
-      if (!couponSnap.empty) {
-        const couponDoc = couponSnap.docs[0];
-        const couponData = couponDoc.data();
-
-        // Validate status
-        const isActive = couponData.status === "Active" || couponData.status === undefined;
-        
-        // Validate expiry
-        let isExpired = false;
-        if (couponData.expiry) {
-          const expiryDate = new Date(couponData.expiry);
-          const today = new Date();
-          // Reset hours to compare dates only
-          today.setHours(0, 0, 0, 0);
-          isExpired = today > expiryDate;
-        }
-
-        // Validate minimum purchase
-        const minPurchase = Number(couponData.minPurchase) || 0;
-        const metMinPurchase = subtotal >= minPurchase;
-
-        if (isActive && !isExpired && metMinPurchase) {
-          if (couponData.type === "percent") {
-            discount = Math.round(subtotal * (Number(couponData.value) / 100));
-          } else if (couponData.type === "flat") {
-            discount = Number(couponData.value);
-          }
-        }
+      const validationResult = await validateCoupon(couponCode, subtotal);
+      if (validationResult.isValid) {
+        discount = validationResult.discount;
+      } else {
+        return NextResponse.json({ message: validationResult.error || "Invalid coupon code." }, { status: 400 });
       }
     }
 

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/navigation";
+import { validateCoupon } from "@/lib/coupons";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Trash2, Plus, Minus, ShoppingBag, Truck, Tag } from "lucide-react";
@@ -53,7 +54,25 @@ export const CartDrawer: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  const currentDiscount = appliedCoupon ? (appliedCoupon === "ELANORA10" || appliedCoupon === "SHIMMER10" ? Math.round(cartSubtotal * 0.10) : 50) : 0;
+  const currentDiscount = appliedCoupon ? discountAmount : 0;
+
+  // Re-validate applied coupon if subtotal changes
+  useEffect(() => {
+    if (appliedCoupon) {
+      const revalidate = async () => {
+        const result = await validateCoupon(appliedCoupon, cartSubtotal);
+        if (result.isValid) {
+          setDiscountAmount(result.discount);
+        } else {
+          // If no longer valid (e.g. subtotal fell below minPurchase), remove it
+          setAppliedCoupon(null);
+          setDiscountAmount(0);
+          setCouponError(result.error || "Coupon removed due to changes in cart.");
+        }
+      };
+      revalidate();
+    }
+  }, [cartSubtotal, appliedCoupon]);
 
   // Free shipping calculations
   const isFreeShippingEligible = deliveryConfig.enableFreeShipping && (cartSubtotal - currentDiscount) >= deliveryConfig.freeDeliveryThreshold;
@@ -61,26 +80,17 @@ export const CartDrawer: React.FC = () => {
   const remainingForFreeShipping = deliveryConfig.freeDeliveryThreshold - (cartSubtotal - currentDiscount);
   const progressPercent = Math.min(((cartSubtotal - currentDiscount) / deliveryConfig.freeDeliveryThreshold) * 100, 100);
 
-  const handleApplyCoupon = (e: React.FormEvent) => {
+  const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     setCouponError("");
     const cleanedCode = couponCode.trim().toUpperCase();
 
-    if (cleanedCode === "ELANORA10" || cleanedCode === "SHIMMER10") {
+    const result = await validateCoupon(cleanedCode, cartSubtotal);
+    if (result.isValid) {
       setAppliedCoupon(cleanedCode);
-      const discount = Math.round(cartSubtotal * 0.10);
-      setDiscountAmount(discount);
-    } else if (cleanedCode === "WELCOME50") {
-      setAppliedCoupon(cleanedCode);
-      const discount = cartSubtotal >= 500 ? 50 : 0;
-      if (discount === 0) {
-        setCouponError("This coupon requires a minimum subtotal of ₹500");
-        setAppliedCoupon(null);
-      } else {
-        setDiscountAmount(discount);
-      }
+      setDiscountAmount(result.discount);
     } else {
-      setCouponError("Invalid coupon code");
+      setCouponError(result.error || "Invalid coupon code");
     }
   };
 
@@ -268,7 +278,7 @@ export const CartDrawer: React.FC = () => {
                 ) : (
                   <div className="bg-green-50 border border-green-200 rounded-md p-2 flex items-center justify-between text-xs text-green-800">
                     <span className="font-semibold flex items-center gap-1">
-                      🎉 Coupon &quot;{appliedCoupon}&quot; Applied! (10% Off)
+                      🎉 Coupon &quot;{appliedCoupon}&quot; Applied! (-₹{currentDiscount})
                     </span>
                     <button onClick={handleRemoveCoupon} className="text-red-600 font-bold hover:underline">
                       Remove

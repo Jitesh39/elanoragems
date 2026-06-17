@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { doc, getDoc, setDoc, collection, query, where, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, query, where, getDocs, serverTimestamp, updateDoc, increment } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import nodemailer from "nodemailer";
 import { createNotification, checkAndCreateStockAlert } from "@/lib/notifications";
+import { validateCoupon } from "@/lib/coupons";
 
 function generateConfirmationEmailHtml(orderNumber: string, orderData: any) {
   const itemsRows = orderData.products.map((item: any) => `
@@ -209,34 +210,11 @@ export async function POST(req: NextRequest) {
     // 3. Validate Coupon
     let discount = 0;
     if (couponCode) {
-      const cleanCoupon = couponCode.trim().toUpperCase();
-      const couponsRef = collection(db, "coupons");
-      const q = query(couponsRef, where("code", "==", cleanCoupon));
-      const couponSnap = await getDocs(q);
-
-      if (!couponSnap.empty) {
-        const couponDoc = couponSnap.docs[0];
-        const couponData = couponDoc.data();
-
-        const isActive = couponData.status === "Active" || couponData.status === undefined;
-        let isExpired = false;
-        if (couponData.expiry) {
-          const expiryDate = new Date(couponData.expiry);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          isExpired = today > expiryDate;
-        }
-
-        const minPurchase = Number(couponData.minPurchase) || 0;
-        const metMinPurchase = subtotal >= minPurchase;
-
-        if (isActive && !isExpired && metMinPurchase) {
-          if (couponData.type === "percent") {
-            discount = Math.round(subtotal * (Number(couponData.value) / 100));
-          } else if (couponData.type === "flat") {
-            discount = Number(couponData.value);
-          }
-        }
+      const validationResult = await validateCoupon(couponCode, subtotal);
+      if (validationResult.isValid) {
+        discount = validationResult.discount;
+      } else {
+        return NextResponse.json({ message: validationResult.error || "Invalid coupon code." }, { status: 400 });
       }
     }
 
@@ -282,10 +260,24 @@ export async function POST(req: NextRequest) {
       paymentMethod: "COD",
       paymentStatus: "Pending",
       orderStatus: "Confirmed",
+      couponCode: couponCode ? couponCode.trim().toUpperCase() : null,
+      couponApplied: couponCode ? couponCode.trim().toUpperCase() : null,
       createdAt: serverTimestamp()
     };
 
     await setDoc(doc(db, "orders", orderNumber), finalOrderObject);
+
+    // Increment coupon used count if coupon was used
+    if (couponCode) {
+      try {
+        const cleanCoupon = couponCode.trim().toUpperCase();
+        await updateDoc(doc(db, "coupons", cleanCoupon), {
+          usedCount: increment(1)
+        });
+      } catch (err) {
+        console.error("Failed to increment coupon usedCount:", err);
+      }
+    }
 
     // Decrement product stock and trigger inventory alerts
     if (finalOrderObject.products && Array.isArray(finalOrderObject.products)) {

@@ -21,6 +21,9 @@ export const metadata: Metadata = {
   title: "ElanoraGems | Premium Luxury Jewellery",
   description: "Exquisite silver, gold-plated, daily wear and bridal jewellery collections crafted for your sacred moments.",
   keywords: "jewellery, luxury jewelry, silver rings, gold plated necklaces, bridal wear, premium bracelets",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({

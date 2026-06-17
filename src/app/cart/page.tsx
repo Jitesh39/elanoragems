@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { validateCoupon } from "@/lib/coupons";
 import { ShoppingBag, Trash2, Plus, Minus, ArrowRight, Tag, Truck } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -17,6 +18,7 @@ export default function CartPage() {
   // Coupon
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [discountAmount, setDiscountAmount] = useState(0);
   const [couponError, setCouponError] = useState("");
 
   const [deliveryConfig, setDeliveryConfig] = useState({
@@ -46,18 +48,35 @@ export default function CartPage() {
     return () => unsubscribe();
   }, []);
 
-  const handleApplyCoupon = (e: React.FormEvent) => {
+  const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     setCouponError("");
     const cleaned = couponCode.trim().toUpperCase();
-    if (cleaned === "ELANORA10" || cleaned === "SHIMMER10") {
+    const result = await validateCoupon(cleaned, cartSubtotal);
+    if (result.isValid) {
       setAppliedCoupon(cleaned);
+      setDiscountAmount(result.discount);
     } else {
-      setCouponError("Invalid coupon code");
+      setCouponError(result.error || "Invalid coupon code");
     }
   };
 
-  const discountAmount = appliedCoupon ? Math.round(cartSubtotal * 0.10) : 0;
+  // Re-validate applied coupon if subtotal changes
+  useEffect(() => {
+    if (appliedCoupon) {
+      const revalidate = async () => {
+        const result = await validateCoupon(appliedCoupon, cartSubtotal);
+        if (result.isValid) {
+          setDiscountAmount(result.discount);
+        } else {
+          setAppliedCoupon(null);
+          setDiscountAmount(0);
+          setCouponError(result.error || "Coupon removed due to changes in cart.");
+        }
+      };
+      revalidate();
+    }
+  }, [cartSubtotal, appliedCoupon]);
 
   const isFreeShippingEligible = deliveryConfig.enableFreeShipping && (cartSubtotal - discountAmount) >= deliveryConfig.freeDeliveryThreshold;
   const shippingFee = cartSubtotal === 0 ? 0 : (isFreeShippingEligible ? 0 : deliveryConfig.shippingFee);
@@ -161,8 +180,8 @@ export default function CartPage() {
                   </form>
                 ) : (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-2.5 flex items-center justify-between text-xs text-green-800">
-                    <span className="font-semibold">Coupon &quot;{appliedCoupon}&quot; (10% Off)</span>
-                    <button onClick={() => setAppliedCoupon(null)} className="text-red-600 font-bold hover:underline">Remove</button>
+                    <span className="font-semibold">Coupon &quot;{appliedCoupon}&quot; (-₹{discountAmount})</span>
+                    <button onClick={() => { setAppliedCoupon(null); setDiscountAmount(0); }} className="text-red-600 font-bold hover:underline">Remove</button>
                   </div>
                 )}
                 {couponError && <p className="text-red-500 text-[10px] font-semibold mt-1">{couponError}</p>}

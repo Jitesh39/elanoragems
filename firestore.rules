@@ -68,5 +68,11 @@ service cloud.firestore {
       allow read, update, delete: if request.auth != null && 
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
+
+    match /coupons/{couponId} {
+      allow get: if true;
+      allow list, write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
   }
 }

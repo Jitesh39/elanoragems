@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, serverTimestamp, updateDoc, increment } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
@@ -216,10 +216,24 @@ export async function POST(req: NextRequest) {
       orderStatus: "Confirmed",
       razorpayOrderId: razorpayOrderId,
       razorpayPaymentId: razorpayPaymentId,
+      couponCode: orderData.couponApplied ? orderData.couponApplied.trim().toUpperCase() : null,
+      couponApplied: orderData.couponApplied ? orderData.couponApplied.trim().toUpperCase() : null,
       createdAt: serverTimestamp()
     };
 
     await setDoc(doc(db, "orders", orderNumber), finalOrderObject);
+
+    // Increment coupon used count if coupon was used
+    if (orderData.couponApplied) {
+      try {
+        const cleanCoupon = orderData.couponApplied.trim().toUpperCase();
+        await updateDoc(doc(db, "coupons", cleanCoupon), {
+          usedCount: increment(1)
+        });
+      } catch (err) {
+        console.error("Failed to increment coupon usedCount:", err);
+      }
+    }
 
     // Decrement product stock and trigger inventory alerts
     if (finalOrderObject.products && Array.isArray(finalOrderObject.products)) {

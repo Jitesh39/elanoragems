@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { validateCoupon } from "@/lib/coupons";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -116,18 +117,41 @@ function CheckoutContent() {
   // Coupon state
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [discountAmount, setDiscountAmount] = useState(0);
   const [couponError, setCouponError] = useState("");
 
   // Pre-load coupon from URL query if exists (e.g. from Cart Drawer redirect)
   useEffect(() => {
     const couponQuery = searchParams.get("coupon");
-    if (couponQuery) {
+    if (couponQuery && cartSubtotal > 0) {
       const cleaned = couponQuery.trim().toUpperCase();
-      if (cleaned === "ELANORA10" || cleaned === "SHIMMER10") {
-        setAppliedCoupon(cleaned);
-      }
+      const validatePreload = async () => {
+        const result = await validateCoupon(cleaned, cartSubtotal);
+        if (result.isValid) {
+          setAppliedCoupon(cleaned);
+          setDiscountAmount(result.discount);
+        }
+      };
+      validatePreload();
     }
-  }, [searchParams]);
+  }, [searchParams, cartSubtotal]);
+
+  // Re-validate applied coupon if subtotal changes
+  useEffect(() => {
+    if (appliedCoupon) {
+      const revalidate = async () => {
+        const result = await validateCoupon(appliedCoupon, cartSubtotal);
+        if (result.isValid) {
+          setDiscountAmount(result.discount);
+        } else {
+          setAppliedCoupon(null);
+          setDiscountAmount(0);
+          setCouponError(result.error || "Coupon removed due to changes in cart.");
+        }
+      };
+      revalidate();
+    }
+  }, [cartSubtotal, appliedCoupon]);
 
   // Set default selected address from profile on load
   useEffect(() => {
@@ -148,11 +172,6 @@ function CheckoutContent() {
     }
   }, [step]);
 
-  // Coupon deduction
-  const discountAmount = appliedCoupon === "ELANORA10" || appliedCoupon === "SHIMMER10"
-    ? Math.round(cartSubtotal * 0.10)
-    : 0;
-
   // Dynamic Shipping calculations
   const isFreeShippingEligible = deliveryConfig.enableFreeShipping && (cartSubtotal - discountAmount) >= deliveryConfig.freeDeliveryThreshold;
   const shippingFee = cartSubtotal === 0 ? 0 : (isFreeShippingEligible ? 0 : deliveryConfig.shippingFee);
@@ -162,14 +181,16 @@ function CheckoutContent() {
 
   const finalTotal = cartSubtotal - discountAmount + shippingFee + codChargeApplied;
 
-  const handleApplyCoupon = (e: React.FormEvent) => {
+  const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     setCouponError("");
     const cleaned = couponCode.trim().toUpperCase();
-    if (cleaned === "ELANORA10" || cleaned === "SHIMMER10") {
+    const result = await validateCoupon(cleaned, cartSubtotal);
+    if (result.isValid) {
       setAppliedCoupon(cleaned);
+      setDiscountAmount(result.discount);
     } else {
-      setCouponError("Invalid coupon code");
+      setCouponError(result.error || "Invalid coupon code");
     }
   };
 
@@ -668,8 +689,8 @@ function CheckoutContent() {
               </form>
             ) : (
               <div className="bg-green-50 border border-green-200 rounded-lg p-2.5 flex items-center justify-between text-xs text-green-800">
-                <span className="font-semibold">Coupon &quot;{appliedCoupon}&quot; (10% Off)</span>
-                <button onClick={() => setAppliedCoupon(null)} className="text-red-600 font-bold hover:underline">Remove</button>
+                <span className="font-semibold">Coupon &quot;{appliedCoupon}&quot; (-₹{discountAmount})</span>
+                <button onClick={() => { setAppliedCoupon(null); setDiscountAmount(0); }} className="text-red-600 font-bold hover:underline">Remove</button>
               </div>
             )}
             {couponError && <p className="text-red-500 text-[10px] font-semibold mt-1">{couponError}</p>}
