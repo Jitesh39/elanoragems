@@ -60,6 +60,7 @@ body {
 .gold-text-gradient {
   background: linear-gradient(135deg, #D4AF37 0%, #AA7C11 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -166,8 +167,13 @@ input[type="button"],
 
 /* Announcement Bar Marquee Animation */
 @keyframes marquee {
-  0% { transform: translateX(100%); }
-  100% { transform: translateX(-100%); }
+  0% {
+    transform: translateX(100%);
+  }
+
+  100% {
+    transform: translateX(-100%);
+  }
 }
 
 .animate-marquee {

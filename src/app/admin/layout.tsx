@@ -2,11 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { AdminRoute } from "@/components/AdminRoute";
 import { useAuth } from "@/context/AuthContext";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { collection, query, where, onSnapshot, doc } from "firebase/firestore";
+import { db, auth } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import {
   LayoutDashboard,
   PackageSearch,
@@ -30,9 +32,38 @@ import {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [logoError, setLogoError] = useState(false);
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [profileUser, setProfileUser] = useState<any>(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        setIsProfileLoading(true);
+        const docRef = doc(db, "users", firebaseUser.uid);
+        const unsubscribeDoc = onSnapshot(docRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setProfileUser(docSnap.data());
+          } else {
+            setProfileUser(null);
+          }
+          setIsProfileLoading(false);
+        }, (error) => {
+          console.error("Error loading user profile:", error);
+          setIsProfileLoading(false);
+        });
+        return () => unsubscribeDoc();
+      } else {
+        setProfileUser(null);
+        setIsProfileLoading(false);
+      }
+    });
+
+    return () => unsubscribeAuth();
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -87,8 +118,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         >
           {/* Logo Area */}
           <div className="h-20 flex items-center justify-between px-6 border-b border-zinc-100">
-            <Link href="/admin" className="font-serif text-2xl font-bold text-[#0F2F6B] tracking-wide">
-              Elanora<span className="text-[#D4AF37]">Admin</span>
+            <Link href="/admin" className="flex items-center select-none">
+              {!logoError ? (
+                <Image
+                  src="/logo.png"
+                  alt="ElanoraGems Admin"
+                  width={150}
+                  height={50}
+                  className="h-[45px] md:h-[50px] w-auto object-contain"
+                  onError={() => setLogoError(true)}
+                />
+              ) : (
+                <span className="font-serif text-2xl font-bold text-[#0F2F6B] tracking-wide">
+                  Elanora<span className="text-[#D4AF37]">Admin</span>
+                </span>
+              )}
             </Link>
             <button className="lg:hidden text-zinc-500 hover:text-[#0F2F6B]" onClick={() => setSidebarOpen(false)}>
               <X size={24} />
@@ -154,7 +198,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             {/* Right Side Header Items */}
             <div className="flex items-center gap-6">
-              <Link 
+              <Link
                 href="/admin/notifications"
                 className="relative p-2 text-zinc-400 hover:text-[#0F2F6B] transition-colors rounded-full hover:bg-zinc-50 animate-pulse-subtle"
               >
@@ -168,21 +212,37 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
               <div className="h-8 w-px bg-zinc-200 hidden sm:block"></div>
 
-              {/* Admin Profile Dropdown Trigger (Visual only for now) */}
+              {/* Admin Profile Dropdown Trigger */}
               <div className="flex items-center gap-3 cursor-pointer group">
-                <div className="hidden sm:flex flex-col items-end">
-                  {/* Display dynamic name */}
-                  <span className="text-sm font-bold text-[#0F2F6B]">
-                    {mounted && user ? (user.displayName || "User") : "User"}
-                  </span>
-                  {/* Role badge */}
-                  <span className="text-[10px] font-bold tracking-widest text-[#D4AF37] uppercase bg-[#D4AF37]/10 px-2 py-0.5 rounded-full mt-0.5">
-                    {mounted && user?.role ? user.role.toUpperCase() : ''}
-                  </span>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-[#0F2F6B] text-white flex items-center justify-center font-bold text-lg border-2 border-[#D4AF37] group-hover:scale-105 transition-transform shadow-sm">
-                  {mounted && user ? (user.displayName?.charAt(0).toUpperCase() || "U") : "U"}
-                </div>
+                {isProfileLoading ? (
+                  <>
+                    <div className="hidden sm:flex flex-col items-end">
+                      <span className="text-sm font-bold text-zinc-400 animate-pulse">
+                        Loading...
+                      </span>
+                      <span className="text-[10px] font-bold tracking-widest text-zinc-300 uppercase bg-zinc-100 px-2 py-0.5 rounded-full mt-0.5">
+                        &nbsp;
+                      </span>
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-zinc-200 animate-pulse border-2 border-zinc-300 shadow-sm shrink-0" />
+                  </>
+                ) : (
+                  <>
+                    <div className="hidden sm:flex flex-col items-end">
+                      {/* Display dynamic name */}
+                      <span className="text-sm font-bold text-[#0F2F6B]">
+                        {profileUser ? (profileUser.name || profileUser.displayName || "User") : "User"}
+                      </span>
+                      {/* Role badge */}
+                      <span className="text-[10px] font-bold tracking-widest text-[#D4AF37] uppercase bg-[#D4AF37]/10 px-2 py-0.5 rounded-full mt-0.5">
+                        {(profileUser?.role || "Customer").toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-[#0F2B5B] text-white flex items-center justify-center font-bold text-lg border-2 border-[#D4AF37] group-hover:scale-105 transition-transform shadow-sm shrink-0">
+                      {(profileUser?.name || profileUser?.displayName || "User").charAt(0).toUpperCase()}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </header>

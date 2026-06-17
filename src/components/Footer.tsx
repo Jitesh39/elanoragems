@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { MessageSquare, ShieldCheck, Mail, Phone, MapPin } from "lucide-react";
 import { doc, onSnapshot, collection } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -40,6 +41,7 @@ export const Footer: React.FC = () => {
   });
   const [categories, setCategories] = useState<any[]>([]);
   const [loadingCats, setLoadingCats] = useState(true);
+  const [logoError, setLogoError] = useState(false);
 
   useEffect(() => {
     const docRef = doc(db, "settings", "storeConfig");
@@ -92,13 +94,33 @@ export const Footer: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
 
           {/* Column 1: Brand Info */}
-          <div className="space-y-4">
-            <Link href="/" className="inline-block">
-              <span className="font-serif text-2xl font-bold tracking-wider text-white">
-                Elanora<span className="text-secondary font-medium font-sans">Gems</span>
-              </span>
-            </Link>
-            <div className="flex items-center gap-3 pt-2">
+          <div className="flex flex-col items-center md:items-start text-center md:text-left gap-4">
+            <div className="flex flex-col items-center md:items-start gap-3 w-full mb-4">
+              <Link href="/" className="inline-block select-none mb-4">
+                {!logoError ? (
+                  <Image
+                    src="/logo.png"
+                    alt="ElanoraGems Luxury Jewellery"
+                    width={160}
+                    height={160}
+                    className="w-[100px] md:w-[140px] lg:w-[160px] h-auto object-contain"
+                    onError={() => setLogoError(true)}
+                  />
+                ) : (
+                  <span className="font-serif text-2xl md:text-3xl font-bold tracking-wider text-white">
+                    Elanora<span className="text-secondary font-medium font-sans">Gems</span>
+                  </span>
+                )}
+              </Link>
+              {!logoError && (
+                <Link href="/" className="inline-block">
+                  <span className="font-serif text-2xl md:text-3xl font-bold tracking-wider text-white">
+                    Elanora<span className="text-secondary font-medium font-sans">Gems</span>
+                  </span>
+                </Link>
+              )}
+            </div>
+            <div className="flex items-center justify-center md:justify-start gap-3 pt-2">
               {socialLinks.facebook && (
                 <a
                   href={socialLinks.facebook}

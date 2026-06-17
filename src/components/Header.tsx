@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import {
   Search,
   User,
@@ -90,6 +91,7 @@ export const Header: React.FC = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [logoError, setLogoError] = useState(false);
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -274,42 +276,56 @@ export const Header: React.FC = () => {
             renderAnnouncementContent()
           )}
         </motion.div>
-      )}
-
-      {/* Header */}
-      <header className="w-full z-40 sticky top-0 bg-white shadow-sm transition-all duration-300">
+      )}      {/* Header */}
+      <header className="w-full z-40 sticky top-0 bg-white shadow-sm transition-all duration-300 border-b border-zinc-100">
         {/* Main Header Area */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-[75px] md:min-h-[110px] flex items-center justify-between relative gap-4">
 
-          {/* Left: Mobile Menu Toggle & Logo */}
-          <div className="flex items-center gap-4">
+          {/* Left Column: Mobile Menu Toggle & Logo (Centered on mobile, left on desktop) */}
+          <div className="flex items-center gap-4 shrink-0 lg:static">
+            {/* Hamburger menu for mobile/tablet */}
             <button
-              className="lg:hidden text-dark hover:text-secondary transition-colors"
+              className="lg:hidden text-dark hover:text-[#0F2F6B] transition-colors p-1 cursor-pointer"
               onClick={() => setMobileMenuOpen(true)}
               aria-label="Open Menu"
             >
               <Menu size={24} />
             </button>
 
-            <Link href="/" className="flex items-center gap-1 select-none">
-              <span className="font-serif text-2xl font-bold tracking-wider text-primary">
-                Elanora<span className="text-secondary font-medium font-sans">Gems</span>
-              </span>
-            </Link>
+            {/* Logo wrapper */}
+            <div className="absolute left-1/2 -translate-x-1/2 lg:static lg:translate-x-0 lg:left-auto min-h-[75px] md:min-h-[110px] flex items-center justify-center pt-[10px] pb-[10px]">
+              <Link href="/" className="flex items-center justify-center select-none">
+                {!logoError ? (
+                  <Image
+                    src="/logo.png"
+                    alt="ElanoraGems Luxury Jewellery"
+                    width={180}
+                    height={90}
+                    className="object-contain w-auto h-auto max-h-[90px]"
+                    priority
+                    onError={() => setLogoError(true)}
+                  />
+                ) : (
+                  <span className="font-serif text-lg md:text-2xl font-bold tracking-wider text-[#0F2F6B]">
+                    Elanora<span className="text-secondary font-medium font-sans">Gems</span>
+                  </span>
+                )}
+              </Link>
+            </div>
           </div>
 
-          {/* Center: Search Bar */}
-          <div ref={searchContainerRef} className="hidden md:flex flex-1 max-w-lg relative">
-            <form onSubmit={handleSearchSubmit} className="w-full relative">
+          {/* Center Column: Search Bar (Desktop only) */}
+          <div ref={searchContainerRef} className="hidden lg:flex flex-1 justify-center max-w-[620px] relative">
+            <form onSubmit={handleSearchSubmit} className="w-full relative shadow-sm hover:shadow-md transition-shadow duration-300 rounded-full">
               <input
                 type="text"
                 placeholder="Search premium jewellery..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setSearchFocused(true)}
-                className="w-full pl-4 pr-10 py-2 border border-zinc-200 rounded-full text-sm outline-none focus:border-secondary transition-all"
+                className="w-full pl-6 pr-12 py-3 border border-zinc-200 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] rounded-full text-sm outline-none bg-white transition-all text-[#1E1E1E]"
               />
-              <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-secondary">
+              <button type="submit" className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-[#D4AF37] transition-colors cursor-pointer">
                 <Search size={18} />
               </button>
             </form>
@@ -321,20 +337,20 @@ export const Header: React.FC = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
-                  className="absolute left-0 right-0 top-full mt-2 bg-white rounded-lg shadow-xl border border-zinc-100 max-h-80 overflow-y-auto z-50 p-2"
+                  className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-zinc-150 max-h-80 overflow-y-auto z-50 p-3"
                 >
                   {searchResults.length > 0 ? (
-                    <div>
-                      <div className="text-xs font-semibold text-zinc-400 px-3 py-1 uppercase tracking-wider">Suggested Products</div>
+                    <div className="space-y-1">
+                      <div className="text-[10px] font-bold text-zinc-400 px-3 py-1.5 uppercase tracking-wider">Suggested Products</div>
                       {searchResults.map((p) => (
                         <div
                           key={p.id}
                           onClick={() => handleSuggestionClick(p.slug)}
-                          className="flex items-center gap-3 p-2 hover:bg-accent rounded-md cursor-pointer transition-colors"
+                          className="flex items-center gap-3 p-2 hover:bg-accent rounded-xl cursor-pointer transition-colors"
                         >
-                          <img src={p.images?.[0] || p.image || "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=100&q=80"} alt={p.name} className="w-10 h-10 object-cover rounded-md border border-zinc-100" />
-                          <div className="flex-1 text-sm font-medium text-dark truncate">{p.name}</div>
-                          <div className="text-sm font-semibold text-secondary">₹{p.price}</div>
+                          <img src={p.images?.[0] || p.image || "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=100&q=80"} alt={p.name} className="w-10 h-10 object-cover rounded-lg border border-zinc-100" />
+                          <div className="flex-1 text-sm font-semibold text-[#1E1E1E] truncate">{p.name}</div>
+                          <div className="text-sm font-bold text-secondary">₹{p.price}</div>
                         </div>
                       ))}
                     </div>
@@ -348,27 +364,35 @@ export const Header: React.FC = () => {
             </AnimatePresence>
           </div>
 
-          {/* Right: Actions */}
-          <div className="flex items-center gap-4 sm:gap-6">
+          {/* Right Column: Actions (Desktop and Mobile) */}
+          <div className="flex items-center gap-3 md:gap-5 shrink-0 z-10">
             {/* Search Toggle for Mobile */}
-            <button className="md:hidden text-dark hover:text-secondary transition-colors" onClick={() => setSearchFocused(!searchFocused)}>
+            <button
+              className="lg:hidden text-dark hover:text-[#D4AF37] transition-colors p-1 cursor-pointer"
+              onClick={() => setSearchFocused(!searchFocused)}
+              aria-label="Search Toggle"
+            >
               <Search size={22} />
             </button>
 
             {/* Profile Link */}
             <Link
               href={user ? "/account" : "/login"}
-              className="text-dark hover:text-secondary transition-colors flex items-center gap-1 py-1"
+              className="text-dark hover:text-[#D4AF37] transition-colors p-1 flex items-center justify-center cursor-pointer"
               aria-label="User Account"
             >
               <User size={22} />
             </Link>
 
-            {/* Wishlist Link */}
-            <Link href="/wishlist" className="text-dark hover:text-secondary transition-colors relative py-1" aria-label="Wishlist">
+            {/* Wishlist Link (Desktop/Tablet only) */}
+            <Link
+              href="/wishlist"
+              className="hidden sm:block text-dark hover:text-[#D4AF37] transition-colors p-1 relative cursor-pointer"
+              aria-label="Wishlist"
+            >
               <Heart size={22} />
               {wishlistItems.length > 0 && (
-                <span className="absolute -top-1 -right-2 bg-secondary text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                <span className="absolute -top-1 -right-1.5 bg-secondary text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
                   {wishlistItems.length}
                 </span>
               )}
@@ -377,12 +401,12 @@ export const Header: React.FC = () => {
             {/* Cart Trigger */}
             <button
               onClick={() => setCartOpen(true)}
-              className="text-dark hover:text-secondary transition-colors relative py-1 cursor-pointer"
+              className="text-dark hover:text-[#D4AF37] transition-colors p-1 relative cursor-pointer"
               aria-label="Shopping Cart"
             >
               <ShoppingBag size={22} />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-2 bg-primary text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                <span className="absolute -top-1 -right-1.5 bg-primary text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
                   {cartCount}
                 </span>
               )}
@@ -392,7 +416,7 @@ export const Header: React.FC = () => {
 
         {/* Mobile Search Input Row */}
         {searchFocused && (
-          <div className="md:hidden bg-zinc-50 border-t border-zinc-100 p-3">
+          <div className="lg:hidden bg-zinc-50 border-t border-zinc-100 p-3">
             <form onSubmit={handleSearchSubmit} className="relative">
               <input
                 type="text"
@@ -402,22 +426,23 @@ export const Header: React.FC = () => {
                 className="w-full pl-3 pr-10 py-2 border border-zinc-200 rounded-full bg-white text-sm outline-none"
                 autoFocus
               />
-              <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400">
+              <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 cursor-pointer">
                 <Search size={18} />
               </button>
             </form>
           </div>
         )}
 
-        {/* Desktop Mega Navigation Bar */}
-        <nav className="hidden lg:block border-t border-zinc-100 bg-white relative">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <ul className="flex items-center justify-center gap-10 text-[16px] font-medium tracking-normal text-[#2b2b2b] py-3 bg-white">
+        {/* Desktop Navigation Bar */}
+        <nav className="hidden lg:block border-t border-zinc-100 bg-white relative h-[60px]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-center">
+            <ul className="flex items-center justify-center gap-10 text-[15px] font-medium tracking-wide text-[#2b2b2b] h-full">
 
               {/* Shop by Category Dropdown */}
-              <li className="group relative py-2 cursor-pointer">
-                <span className="flex items-center gap-1 hover:text-secondary transition-colors">
-                  Shop by Category <ChevronDown size={12} className="text-zinc-400 group-hover:text-secondary transition-colors" />
+              <li className="group relative py-2 cursor-pointer h-full flex items-center">
+                <span className="flex items-center gap-1 hover:text-[#D4AF37] transition-colors relative py-1.5">
+                  Shop by Category <ChevronDown size={12} className="text-zinc-400 group-hover:text-[#D4AF37] transition-colors" />
+                  <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
                 </span>
                 <div className="absolute top-full left-0 w-52 bg-white border border-zinc-100 shadow-xl rounded-b-lg p-3 opacity-0 translate-y-3 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 z-50">
                   <ul className="space-y-2 text-xs font-semibold text-zinc-600">
@@ -444,9 +469,10 @@ export const Header: React.FC = () => {
               </li>
 
               {/* Bestseller */}
-              <li className="group relative py-2 cursor-pointer">
-                <span className="flex items-center gap-1 hover:text-secondary transition-colors">
-                  Bestseller <ChevronDown size={12} className="text-zinc-400 group-hover:text-secondary transition-colors" />
+              <li className="group relative py-2 cursor-pointer h-full flex items-center">
+                <span className="flex items-center gap-1 hover:text-[#D4AF37] transition-colors relative py-1.5">
+                  Bestseller <ChevronDown size={12} className="text-zinc-400 group-hover:text-[#D4AF37] transition-colors" />
+                  <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
                 </span>
                 <div className="absolute top-full left-0 w-48 bg-white border border-zinc-100 shadow-xl rounded-b-lg p-3 opacity-0 translate-y-3 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 z-50">
                   <ul className="space-y-2 text-xs font-semibold text-zinc-600">
@@ -463,16 +489,18 @@ export const Header: React.FC = () => {
               </li>
 
               {/* New Arrival */}
-              <li className="py-2">
-                <Link href="/new-arrivals" className="hover:text-secondary transition-colors">
+              <li className="h-full flex items-center">
+                <Link href="/new-arrivals" className="hover:text-[#D4AF37] transition-colors relative py-1.5 group">
                   New Arrival
+                  <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
                 </Link>
               </li>
 
               {/* Shop By Women */}
-              <li className="group relative py-2 cursor-pointer">
-                <span className="flex items-center gap-1 hover:text-secondary transition-colors">
-                  Shop By Women <ChevronDown size={12} className="text-zinc-400 group-hover:text-secondary transition-colors" />
+              <li className="group relative py-2 cursor-pointer h-full flex items-center">
+                <span className="flex items-center gap-1 hover:text-[#D4AF37] transition-colors relative py-1.5">
+                  Shop By Women <ChevronDown size={12} className="text-zinc-400 group-hover:text-[#D4AF37] transition-colors" />
+                  <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
                 </span>
                 <div className="absolute top-full left-0 w-48 bg-white border border-zinc-100 shadow-xl rounded-b-lg p-3 opacity-0 translate-y-3 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 z-50">
                   <ul className="space-y-2 text-xs font-semibold text-zinc-600">
@@ -485,9 +513,10 @@ export const Header: React.FC = () => {
               </li>
 
               {/* Shop By Men */}
-              <li className="group relative py-2 cursor-pointer">
-                <span className="flex items-center gap-1 hover:text-secondary transition-colors">
-                  Shop By Men <ChevronDown size={12} className="text-zinc-400 group-hover:text-secondary transition-colors" />
+              <li className="group relative py-2 cursor-pointer h-full flex items-center">
+                <span className="flex items-center gap-1 hover:text-[#D4AF37] transition-colors relative py-1.5">
+                  Shop By Men <ChevronDown size={12} className="text-zinc-400 group-hover:text-[#D4AF37] transition-colors" />
+                  <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
                 </span>
                 <div className="absolute top-full left-0 w-48 bg-white border border-zinc-100 shadow-xl rounded-b-lg p-3 opacity-0 translate-y-3 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 z-50">
                   <ul className="space-y-2 text-xs font-semibold text-zinc-600">
@@ -503,9 +532,10 @@ export const Header: React.FC = () => {
               </li>
 
               {/* Shop By Kids */}
-              <li className="group relative py-2 cursor-pointer">
-                <span className="flex items-center gap-1 hover:text-secondary transition-colors">
-                  Shop By Kids <ChevronDown size={12} className="text-zinc-400 group-hover:text-secondary transition-colors" />
+              <li className="group relative py-2 cursor-pointer h-full flex items-center">
+                <span className="flex items-center gap-1 hover:text-[#D4AF37] transition-colors relative py-1.5">
+                  Shop By Kids <ChevronDown size={12} className="text-zinc-400 group-hover:text-[#D4AF37] transition-colors" />
+                  <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
                 </span>
                 <div className="absolute top-full left-0 w-48 bg-white border border-zinc-100 shadow-xl rounded-b-lg p-3 opacity-0 translate-y-3 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 z-50">
                   <ul className="space-y-2 text-xs font-semibold text-zinc-600">
@@ -521,9 +551,10 @@ export const Header: React.FC = () => {
               </li>
 
               {/* Explore Elanora */}
-              <li className="group relative py-2 cursor-pointer">
-                <span className="flex items-center gap-1 hover:text-secondary transition-colors">
-                  Explore Elanora <ChevronDown size={12} className="text-zinc-400 group-hover:text-secondary transition-colors" />
+              <li className="group relative py-2 cursor-pointer h-full flex items-center">
+                <span className="flex items-center gap-1 hover:text-[#D4AF37] transition-colors relative py-1.5">
+                  Explore Elanora <ChevronDown size={12} className="text-zinc-400 group-hover:text-[#D4AF37] transition-colors" />
+                  <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-[#D4AF37] transition-all duration-300 group-hover:w-full"></span>
                 </span>
                 <div className="absolute top-full right-0 w-48 bg-white border border-zinc-100 shadow-xl rounded-b-lg p-3 opacity-0 translate-y-3 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 z-50">
                   <ul className="space-y-2 text-xs font-semibold text-zinc-600">
@@ -559,9 +590,22 @@ export const Header: React.FC = () => {
               className="fixed inset-y-0 left-0 max-w-xs w-full bg-white z-50 shadow-2xl flex flex-col p-6 overflow-y-auto"
             >
               <div className="flex items-center justify-between border-b border-zinc-100 pb-4 mb-4">
-                <span className="font-serif text-lg font-bold tracking-wider text-primary">
-                  Elanora<span className="text-secondary font-medium font-sans">Gems</span>
-                </span>
+                <Link href="/" className="flex items-center select-none" onClick={() => setMobileMenuOpen(false)}>
+                  {!logoError ? (
+                    <Image
+                      src="/logo.png"
+                      alt="ElanoraGems Luxury Jewellery"
+                      width={150}
+                      height={40}
+                      className="h-[40px] w-auto object-contain"
+                      onError={() => setLogoError(true)}
+                    />
+                  ) : (
+                    <span className="font-serif text-lg font-bold tracking-wider text-primary">
+                      Elanora<span className="text-secondary font-medium font-sans">Gems</span>
+                    </span>
+                  )}
+                </Link>
                 <button onClick={() => setMobileMenuOpen(false)} className="text-dark hover:text-secondary">
                   <X size={24} />
                 </button>
