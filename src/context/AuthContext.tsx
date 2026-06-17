@@ -29,6 +29,7 @@ export interface Address {
 export interface UserProfile {
   uid: string;
   email: string | null;
+  name?: string;
   displayName: string;
   role: "customer" | "admin";
   addresses: Address[];
@@ -76,14 +77,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           throw new Error("Missing or invalid user role configuration.");
         }
         const profile = data as UserProfile;
+        
+        // Self-heal: ensure name field exists in Firestore if missing
+        let updatedFields: any = {};
+        if (!profile.name && profile.displayName) {
+          profile.name = profile.displayName;
+          updatedFields.name = profile.displayName;
+        } else if (!profile.displayName && profile.name) {
+          profile.displayName = profile.name;
+          updatedFields.displayName = profile.name;
+        }
+
+        if (Object.keys(updatedFields).length > 0) {
+          await updateDoc(userRefDoc, updatedFields);
+        }
+
         setUser(profile);
         return profile;
       } else {
         // Create user document
+        const defaultName = firebaseUser.displayName || "Valued Customer";
         const newProfile: UserProfile = {
           uid: firebaseUser.uid,
           email: firebaseUser.email,
-          displayName: firebaseUser.displayName || "Valued Customer",
+          name: defaultName,
+          displayName: defaultName,
           role: firebaseUser.email === "admin@elanoragems.com" ? "admin" : "customer",
           addresses: [],
           createdAt: new Date().toISOString()
@@ -168,6 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const newProfile: UserProfile = {
         uid: userCredential.user.uid,
         email: email,
+        name: name,
         displayName: name,
         role: email === "admin@elanoragems.com" ? "admin" : "customer",
         addresses: [],

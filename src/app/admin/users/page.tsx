@@ -33,8 +33,8 @@ export default function UsersPage() {
     }
   }, []);
 
-  const filteredUsers = users.filter(u => 
-    (u.name || "").toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const filteredUsers = users.filter(u =>
+    (u.name || u.displayName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
     (u.email || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -52,9 +52,9 @@ export default function UsersPage() {
         <div className="p-4 border-b border-zinc-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-zinc-50/50">
           <div className="relative w-full sm:w-80">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search users..." 
+            <input
+              type="text"
+              placeholder="Search users..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:border-[#0F2F6B] focus:ring-1 focus:ring-[#0F2F6B]"
@@ -86,7 +86,7 @@ export default function UsersPage() {
                       <UserCircle size={24} />
                     </div>
                     <div>
-                      <p className="font-bold text-[#0F2F6B]">{user.name || "Unknown User"}</p>
+                      <p className="font-bold text-[#0F2F6B]">{user.name || user.displayName || "Unknown User"}</p>
                       <p className="text-xs text-zinc-400 font-mono mt-0.5">ID: {user.id.slice(0, 8)}</p>
                     </div>
                   </td>
