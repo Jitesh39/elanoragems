@@ -114,9 +114,7 @@ export const Footer: React.FC = () => {
               </Link>
               {!logoError && (
                 <Link href="/" className="inline-block">
-                  <span className="font-serif text-2xl md:text-3xl font-bold tracking-wider text-white">
-                    Elanora<span className="text-secondary font-medium font-sans">Gems</span>
-                  </span>
+
                 </Link>
               )}
             </div>
