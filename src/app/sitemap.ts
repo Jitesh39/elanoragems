@@ -31,9 +31,9 @@ interface Category {
 function parseFirestoreDate(ts: FirestoreTimestamp | string | number | undefined): Date {
   const fallback = new Date();
   if (!ts) return fallback;
-  
+
   let date: Date;
-  
+
   if (typeof ts === "object") {
     if (typeof ts.toDate === "function") {
       try {
@@ -51,7 +51,7 @@ function parseFirestoreDate(ts: FirestoreTimestamp | string | number | undefined
   } else {
     date = fallback;
   }
-  
+
   // Guard against invalid Date results (e.g. from parsing strings like "abc")
   return isNaN(date.getTime()) ? fallback : date;
 }
