@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: ["/admin", "/checkout", "/account"],
     },
-    sitemap: "https://elanoragems.com/sitemap.xml",
+    sitemap: "https://elanoragems.in/sitemap.xml",
   };
 }

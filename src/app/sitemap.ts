@@ -3,7 +3,7 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = "https://elanoragems.com";
+  const baseUrl = "https://elanoragems.in";
 
   let productEntries: any[] = [];
   let categoryEntries: any[] = [];
