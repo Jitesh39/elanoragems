@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/admin", "/checkout", "/account"],
+      disallow: ["/admin", "/checkout", "/account", "/login", "/wishlist"],
     },
     sitemap: "https://elanoragems.in/sitemap.xml",
   };
