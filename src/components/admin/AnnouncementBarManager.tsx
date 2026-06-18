@@ -15,7 +15,7 @@ export function AnnouncementBarManager() {
   const [enabled, setEnabled] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState("#163a7d");
   const [textColor, setTextColor] = useState("#ffffff");
-  const [marquee, setMarquee] = useState(false);
+  const marquee = false;
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -39,7 +39,6 @@ export function AnnouncementBarManager() {
           setEnabled(data.enabled ?? false);
           setBackgroundColor(data.backgroundColor ?? "#163a7d");
           setTextColor(data.textColor ?? "#ffffff");
-          setMarquee(data.marquee ?? false);
 
           let list: AnnouncementItem[] = data.announcements ?? [];
           // Backward-compatibility: if legacy fields exist and list is empty
@@ -176,9 +175,7 @@ export function AnnouncementBarManager() {
       {/* Title */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-zinc-100 pb-4 gap-4">
         <div>
-          <h2 className="text-lg font-bold text-[#0F2F6B] flex items-center gap-2">
-            <Sparkles className="text-[#D4AF37]" size={20} />
-            Announcement Bar Settings
+          <h2 className="text-lg font-bold text-[#0F2F6B] flex items-center gap-2">            Announcement Bar Settings
           </h2>
           <p className="text-xs text-zinc-500 mt-1">
             Configure promotions and updates shown at the absolute top of the storefront.
@@ -206,11 +203,10 @@ export function AnnouncementBarManager() {
       {/* Message Feedback */}
       {feedback && (
         <div
-          className={`flex items-start gap-3 p-4 rounded-xl border text-sm transition-all animate-fade-in ${
-            feedback.type === "success"
+          className={`flex items-start gap-3 p-4 rounded-xl border text-sm transition-all animate-fade-in ${feedback.type === "success"
               ? "bg-emerald-50 border-emerald-200 text-emerald-800"
               : "bg-rose-50 border-rose-200 text-rose-800"
-          }`}
+            }`}
         >
           {feedback.type === "success" ? (
             <CheckCircle className="shrink-0 text-emerald-500" size={18} />
@@ -240,14 +236,12 @@ export function AnnouncementBarManager() {
                 <button
                   type="button"
                   onClick={() => setEnabled(!enabled)}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    enabled ? "bg-[#0F2F6B]" : "bg-zinc-300"
-                  }`}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${enabled ? "bg-[#0F2F6B]" : "bg-zinc-300"
+                    }`}
                 >
                   <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                      enabled ? "translate-x-5" : "translate-x-0"
-                    }`}
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${enabled ? "translate-x-5" : "translate-x-0"
+                      }`}
                   />
                 </button>
               </div>
@@ -295,29 +289,7 @@ export function AnnouncementBarManager() {
                     />
                   </div>
                 </div>
-              </div>
-
-              {/* Toggle Marquee */}
-              <div className="flex items-center justify-between pt-4 border-t border-zinc-200/60">
-                <div>
-                  <label className="font-bold text-sm text-[#0F2F6B] block">Auto Scroll / Marquee</label>
-                  <span className="text-xs text-zinc-500">Animate text from right to left smoothly.</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setMarquee(!marquee)}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    marquee ? "bg-[#0F2F6B]" : "bg-zinc-300"
-                  }`}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                      marquee ? "translate-x-5" : "translate-x-0"
-                    }`}
-                  />
-                </button>
-              </div>
-            </div>
+              </div>            </div>
 
             {/* List Manager Section */}
             <div className="space-y-4">
