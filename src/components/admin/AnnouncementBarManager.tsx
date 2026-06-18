@@ -9,13 +9,10 @@ interface AnnouncementItem {
   id: string;
   message: string;
   link: string;
-}
-
-export function AnnouncementBarManager() {
+}export function AnnouncementBarManager() {
   const [enabled, setEnabled] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState("#163a7d");
   const [textColor, setTextColor] = useState("#ffffff");
-  const marquee = false;
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -62,9 +59,9 @@ export function AnnouncementBarManager() {
     fetchSettings();
   }, []);
 
-  // Timer to cycle announcements in preview if marquee is disabled
+  // Timer to cycle announcements in preview
   useEffect(() => {
-    if (marquee || announcements.length <= 1) {
+    if (announcements.length <= 1) {
       setPreviewIndex(0);
       return;
     }
@@ -72,7 +69,7 @@ export function AnnouncementBarManager() {
       setPreviewIndex((prev) => (prev + 1) % announcements.length);
     }, 4000);
     return () => clearInterval(timer);
-  }, [announcements.length, marquee]);
+  }, [announcements.length]);
 
   // Auto-clear feedback notification
   useEffect(() => {
@@ -139,7 +136,6 @@ export function AnnouncementBarManager() {
         enabled,
         backgroundColor,
         textColor,
-        marquee,
         announcements: announcements.map((item) => ({
           id: item.id,
           message: item.message.trim(),
@@ -162,10 +158,6 @@ export function AnnouncementBarManager() {
     const activeList = announcements.filter((a) => a.message.trim());
     if (activeList.length === 0) return "✨ Enter a message in the fields to preview";
 
-    if (marquee) {
-      return activeList.map((a) => a.message).join("     •     ");
-    }
-
     const currentItem = activeList[previewIndex] || activeList[0];
     return currentItem ? currentItem.message : "";
   };
@@ -175,7 +167,9 @@ export function AnnouncementBarManager() {
       {/* Title */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-zinc-100 pb-4 gap-4">
         <div>
-          <h2 className="text-lg font-bold text-[#0F2F6B] flex items-center gap-2">            Announcement Bar Settings
+          <h2 className="text-lg font-bold text-[#0F2F6B] flex items-center gap-2">
+            <Sparkles className="text-[#D4AF37]" size={20} />
+            Announcement Bar Settings
           </h2>
           <p className="text-xs text-zinc-500 mt-1">
             Configure promotions and updates shown at the absolute top of the storefront.
@@ -289,9 +283,9 @@ export function AnnouncementBarManager() {
                     />
                   </div>
                 </div>
-              </div>            </div>
+              </div>
+            </div>
 
-            {/* List Manager Section */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="font-serif font-bold text-sm text-[#0F2F6B]">Announcements List</h3>
@@ -397,17 +391,9 @@ export function AnnouncementBarManager() {
                     style={{ backgroundColor: backgroundColor, color: textColor }}
                     className="text-xs py-2.5 px-4 overflow-hidden relative flex items-center justify-center font-medium tracking-wider select-none min-h-[36px]"
                   >
-                    {marquee ? (
-                      <div className="w-full overflow-hidden whitespace-nowrap">
-                        <span className="animate-marquee inline-block pl-[100%] pr-4">
-                          {getPreviewText()}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-center w-full truncate px-4 animate-fade-in key={previewIndex}">
-                        {getPreviewText()}
-                      </span>
-                    )}
+                    <span className="text-center w-full truncate px-4 animate-fade-in" key={previewIndex}>
+                      {getPreviewText()}
+                    </span>
                   </div>
                 ) : (
                   <div className="bg-zinc-200 text-zinc-400 py-3 text-center text-xs font-semibold italic">
@@ -419,17 +405,16 @@ export function AnnouncementBarManager() {
               <div className="mt-4 flex flex-col gap-2">
                 <div className="flex justify-between items-center text-[10px] font-semibold text-zinc-500">
                   <span>Interactive Preview Actions:</span>
-                  {announcements.length > 1 && !marquee && (
+                  {announcements.length > 1 && (
                     <span className="text-primary font-bold">
                       Cycling {previewIndex + 1} of {announcements.length}
                     </span>
                   )}
                 </div>
                 <p className="text-[10px] text-zinc-400 leading-relaxed">
-                  {marquee
-                    ? "Marquee scrolling combines all active announcements separated by a dot."
-                    : "In static mode, the bar fades through each announcement every 4 seconds."}
+                  In static mode, the bar fades through each announcement every 4 seconds.
                 </p>
+
               </div>
             </div>
           </div>

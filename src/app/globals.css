@@ -165,26 +165,6 @@ input[type="button"],
   cursor: pointer !important;
 }
 
-/* Announcement Bar Marquee Animation */
-@keyframes marquee {
-  0% {
-    transform: translateX(100%);
-  }
-
-  100% {
-    transform: translateX(-100%);
-  }
-}
-
-.animate-marquee {
-  display: inline-block;
-  white-space: nowrap;
-  animation: marquee 20s linear infinite;
-}
-
-.animate-marquee:hover {
-  animation-play-state: paused;
-}
 
 /* Mobile and Tablet Header Layout (under 1024px) */
 @media (max-width: 1024px) {

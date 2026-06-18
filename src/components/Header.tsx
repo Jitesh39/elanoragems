@@ -96,12 +96,12 @@ export const Header: React.FC = () => {
     setMounted(true);
   }, []);
   const [mobileActiveAccordion, setMobileActiveAccordion] = useState<string | null>(null);
+
   // Dynamic Announcement Bar State
   const [announcementSettings, setAnnouncementSettings] = useState<{
     enabled: boolean;
     backgroundColor: string;
     textColor: string;
-    marquee: boolean;
     announcements: { id: string; message: string; link: string }[];
   } | null>(null);
   const [showAnnouncement, setShowAnnouncement] = useState(true);
@@ -126,7 +126,6 @@ export const Header: React.FC = () => {
           enabled: data.enabled ?? false,
           backgroundColor: data.backgroundColor ?? "#163a7d",
           textColor: data.textColor ?? "#ffffff",
-          marquee: data.marquee ?? false,
           announcements: list,
         });
       } else {
@@ -137,9 +136,9 @@ export const Header: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  // Cycle announcements if marquee is disabled and multiple items exist
+  // Cycle announcements if multiple items exist
   useEffect(() => {
-    if (!announcementSettings || announcementSettings.marquee || announcementSettings.announcements.length <= 1) {
+    if (!announcementSettings || announcementSettings.announcements.length <= 1) {
       setCurrentAnnouncementIndex(0);
       return;
     }
@@ -164,26 +163,12 @@ export const Header: React.FC = () => {
 
   const getActiveLink = () => {
     if (!announcementSettings || announcementSettings.announcements.length === 0) return null;
-    if (announcementSettings.marquee) {
-      const firstWithLink = announcementSettings.announcements.find((a) => a.link);
-      return firstWithLink?.link || null;
-    }
     const current = announcementSettings.announcements[currentAnnouncementIndex] || announcementSettings.announcements[0];
     return current?.link || null;
   };
 
   const renderAnnouncementContent = () => {
     if (!announcementSettings || announcementSettings.announcements.length === 0) return null;
-    if (announcementSettings.marquee) {
-      const combinedText = announcementSettings.announcements.map((a) => a.message).join("     •     ");
-      return (
-        <div className="w-full overflow-hidden whitespace-nowrap">
-          <span className="animate-marquee inline-block pl-[100%] pr-4">
-            {combinedText}
-          </span>
-        </div>
-      );
-    }
     const current = announcementSettings.announcements[currentAnnouncementIndex] || announcementSettings.announcements[0];
     if (!current) return null;
 
