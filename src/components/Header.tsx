@@ -281,37 +281,36 @@ export const Header: React.FC = () => {
         {/* Main Header Area */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-[75px] md:min-h-[110px] flex items-center justify-between relative gap-4">
 
-          {/* Left Column: Mobile Menu Toggle & Logo (Centered on mobile, left on desktop) */}
-          <div className="flex items-center gap-4 shrink-0 lg:static">
-            {/* Hamburger menu for mobile/tablet */}
+          {/* Left Menu: Hamburger menu for mobile/tablet */}
+          <div className="flex-shrink-0 lg:hidden">
             <button
-              className="lg:hidden text-dark hover:text-[#0F2F6B] transition-colors p-1 cursor-pointer"
+              className="text-dark hover:text-[#0F2F6B] transition-colors p-1 cursor-pointer"
               onClick={() => setMobileMenuOpen(true)}
               aria-label="Open Menu"
             >
               <Menu size={24} />
             </button>
+          </div>
 
-            {/* Logo wrapper */}
-            <div className="absolute left-1/2 -translate-x-1/2 lg:static lg:translate-x-0 lg:left-auto min-h-[75px] md:min-h-[110px] flex items-center justify-center pt-[10px] pb-[10px]">
-              <Link href="/" className="flex items-center justify-center select-none">
-                {!logoError ? (
-                  <Image
-                    src="/logo.png"
-                    alt="ElanoraGems Luxury Jewellery"
-                    width={180}
-                    height={90}
-                    className="object-contain w-auto h-auto max-h-[90px]"
-                    priority
-                    onError={() => setLogoError(true)}
-                  />
-                ) : (
-                  <span className="font-serif text-lg md:text-2xl font-bold tracking-wider text-[#0F2F6B]">
-                    Elanora<span className="text-secondary font-medium font-sans">Gems</span>
-                  </span>
-                )}
-              </Link>
-            </div>
+          {/* Logo Container */}
+          <div className="logo-container min-h-[75px] md:min-h-[110px] pt-[10px] pb-[10px]">
+            <Link href="/" className="flex items-center justify-center select-none">
+              {!logoError ? (
+                <Image
+                  src="/logo.png"
+                  alt="ElanoraGems Luxury Jewellery"
+                  width={180}
+                  height={90}
+                  className="object-contain"
+                  priority
+                  onError={() => setLogoError(true)}
+                />
+              ) : (
+                <span className="font-serif text-lg md:text-2xl font-bold tracking-wider text-[#0F2F6B]">
+                  Elanora<span className="text-secondary font-medium font-sans">Gems</span>
+                </span>
+              )}
+            </Link>
           </div>
 
           {/* Center Column: Search Bar (Desktop only) */}
@@ -365,7 +364,7 @@ export const Header: React.FC = () => {
           </div>
 
           {/* Right Column: Actions (Desktop and Mobile) */}
-          <div className="flex items-center gap-3 md:gap-5 shrink-0 z-10">
+          <div className="header-icons flex items-center gap-3 md:gap-5 shrink-0 z-10">
             {/* Search Toggle for Mobile */}
             <button
               className="lg:hidden text-dark hover:text-[#D4AF37] transition-colors p-1 cursor-pointer"
