@@ -279,7 +279,7 @@ export const Header: React.FC = () => {
       )}      {/* Header */}
       <header className="w-full z-40 sticky top-0 bg-white shadow-sm transition-all duration-300 border-b border-zinc-100">
         {/* Main Header Area */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-[75px] md:min-h-[110px] flex items-center justify-between relative gap-4">
+        <div className="mobile-header max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-[75px] md:min-h-[110px] flex items-center justify-between relative gap-4">
 
           {/* Left Menu: Hamburger menu for mobile/tablet */}
           <div className="flex-shrink-0 lg:hidden">
@@ -293,7 +293,7 @@ export const Header: React.FC = () => {
           </div>
 
           {/* Logo Container */}
-          <div className="logo-container min-h-[75px] md:min-h-[110px] pt-[10px] pb-[10px]">
+          <div className="logo-wrapper min-h-[75px] md:min-h-[110px] pt-[10px] pb-[10px]">
             <Link href="/" className="flex items-center justify-center select-none">
               {!logoError ? (
                 <Image
@@ -364,7 +364,7 @@ export const Header: React.FC = () => {
           </div>
 
           {/* Right Column: Actions (Desktop and Mobile) */}
-          <div className="header-icons flex items-center gap-3 md:gap-5 shrink-0 z-10">
+          <div className="header-actions flex items-center gap-3 md:gap-5 shrink-0 z-10">
             {/* Search Toggle for Mobile */}
             <button
               className="lg:hidden text-dark hover:text-[#D4AF37] transition-colors p-1 cursor-pointer"

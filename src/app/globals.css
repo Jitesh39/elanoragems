@@ -186,46 +186,86 @@ input[type="button"],
   animation-play-state: paused;
 }
 
-/* Header and Logo Styling */
-.logo-container {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-width: fit-content;
-}
-
-.logo-container img {
-  width: auto !important;
-  height: auto !important;
-  max-height: 70px !important;
-  object-fit: contain;
-}
-
-@media (min-width: 1024px) {
-  .logo-container {
-    flex: initial;
-    justify-content: flex-start;
-  }
-}
-
+/* Mobile and Tablet Header Layout (under 1024px) */
 @media (max-width: 1024px) {
-  .logo-container img {
+  .mobile-header {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo-wrapper {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 20;
+    pointer-events: auto;
+    /* Ensure the logo link is clickable */
+  }
+
+  .logo-wrapper img {
+    width: auto !important;
+    height: 60px !important;
     max-height: 60px !important;
+    object-fit: contain;
+  }
+
+  .header-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px !important;
+    z-index: 30;
   }
 }
 
+/* Mobile Specific Tweaks (under 768px) */
 @media (max-width: 768px) {
-  .logo-container img {
-    max-height: 50px !important;
+  .mobile-header {
+    height: 88px;
   }
 
-  .header-icons {
-    gap: 10px !important;
+  .logo-wrapper img {
+    height: 52px !important;
+    max-height: 52px !important;
   }
 
-  .header-icons svg {
+  .header-actions {
+    gap: 14px !important;
+  }
+
+  .header-actions svg {
     width: 20px !important;
     height: 20px !important;
+  }
+}
+
+/* Desktop Header Layout (1025px and up) */
+@media (min-width: 1025px) {
+  .mobile-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo-wrapper {
+    position: static;
+    transform: none;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+  }
+
+  .logo-wrapper img {
+    width: auto !important;
+    height: auto !important;
+    max-height: 70px !important;
+    object-fit: contain;
   }
 }
